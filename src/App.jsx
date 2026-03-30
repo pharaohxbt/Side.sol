@@ -1,4 +1,23 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createAuth0Client } from "@auth0/auth0-spa-js";
+
+// ════════════════════════════════════════
+// AUTH0
+// ════════════════════════════════════════
+const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN || "";
+const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID || "";
+let _auth0 = null;
+async function getAuth0() {
+  if (_auth0) return _auth0;
+  if (!AUTH0_DOMAIN || !AUTH0_CLIENT_ID) return null;
+  _auth0 = await createAuth0Client({
+    domain: AUTH0_DOMAIN,
+    clientId: AUTH0_CLIENT_ID,
+    authorizationParams: { redirect_uri: window.location.origin },
+    cacheLocation: "localstorage",
+  });
+  return _auth0;
+}
 
 // ════════════════════════════════════════
 // DATA
@@ -269,22 +288,30 @@ export default function App() {
     setPrivacy(loadState("privacy", { profilePublic: false }));
     setDark(loadState("dark", false));
     setReady(true);
-    // X OAuth callback: check for x_auth param
-    const urlParams = new URLSearchParams(window.location.search);
-    const xAuth = urlParams.get("x_auth");
-    const authError = urlParams.get("auth_error");
-    if (xAuth) {
+    // Auth0 callback: handle redirect after login
+    (async () => {
       try {
-        const xUser = JSON.parse(decodeURIComponent(xAuth));
-        setUser(xUser);
-        saveState("user", xUser);
-        window.history.replaceState(null, "", window.location.pathname);
-        setTimeout(() => toast("Signed in with X!"), 100);
-      } catch(e) { console.error("Failed to parse X auth data", e); }
-    } else if (authError) {
-      window.history.replaceState(null, "", window.location.pathname);
-      setTimeout(() => toast("Sign in failed — try again", "error"), 100);
-    }
+        const auth0 = await getAuth0();
+        if (!auth0) return;
+        const query = window.location.search;
+        if (query.includes("code=") && query.includes("state=")) {
+          await auth0.handleRedirectCallback();
+          window.history.replaceState(null, "", window.location.pathname);
+          const auth0User = await auth0.getUser();
+          if (auth0User) {
+            const xUser = {
+              name: auth0User.name || auth0User.nickname || "Anon",
+              handle: auth0User.nickname ? `@${auth0User.nickname}` : auth0User.email || "",
+              pfp: auth0User.picture || "",
+              method: "x",
+            };
+            setUser(xUser);
+            saveState("user", xUser);
+            setTimeout(() => toast("Signed in with X!"), 100);
+          }
+        }
+      } catch(e) { console.error("Auth0 callback error", e); }
+    })();
     // Deep link: open event from URL hash
     const hash = window.location.hash;
     if (hash.startsWith("#event=")) {
@@ -423,9 +450,11 @@ export default function App() {
     toast(`Added ${u.name}!`);
   };
 
-  const handleAuth = (method) => {
+  const handleAuth = async (method) => {
     if (method === "x") {
-      window.location.href = "/api/auth/twitter";
+      const auth0 = await getAuth0();
+      if (!auth0) { toast("Auth not configured", "error"); return; }
+      await auth0.loginWithRedirect({ authorizationParams: { connection: "twitter" } });
       return;
     }
     if (!af.email) { toast("Email required", "error"); return; }
