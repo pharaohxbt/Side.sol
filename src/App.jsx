@@ -452,7 +452,8 @@ export default function App() {
         checkins_data: checkins,
         incog_data: incog,
       }).eq("id", user.supaId);
-      if (error) console.error("Sync failed:", error.message);
+      if (error) console.error("Sync failed:", error.message, error.details, error.hint);
+      else console.log("[sync] saved to Supabase:", { friends: friends.length, rsvps: rsvps.length });
     } catch(e) { console.error("Sync error:", e); }
   }, [friends, vips, bmarks, rsvps, checkins, incog, user]);
 
@@ -599,6 +600,7 @@ export default function App() {
 
   const addFriend = (h) => {
     const handle = h.startsWith("@") ? h : `@${h}`;
+    console.log("[addFriend]", handle, "existing:", friendHandles);
     if (friendHandles.map(x=>x.toLowerCase()).includes(handle.toLowerCase())) { toast("Already friends", "info"); return; }
 
     // Check known demo users first
@@ -612,6 +614,7 @@ export default function App() {
 
     // Add to local state immediately as pending (instant UI feedback)
     const name = handle.slice(1);
+    console.log("[addFriend] adding pending:", handle);
     setFriends(f => [...f, { handle, name, method: "x", role: "", bio: "", notable: false, tags: [], pending: true }]);
     toast(`Added ${name} — will link when they join!`, "info");
 
