@@ -1047,7 +1047,7 @@ export default function App() {
         {profTab === "quests" && renderQuests()}
         {profTab === "saved" && (savedEvs.length === 0 ? <div className="empty-msg">⭐<br/><br/><strong>No saved events yet</strong><br/>Tap the star on any event to save it</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{savedEvs.map((ev,i) => renderCard(ev,i,true))}</div>)}
         {profTab === "verified" && (verEvs.length === 0 ? <div className="empty-msg">📍<br/><br/><strong>No check-ins yet</strong><br/>RSVP to events, then check in at the venue to earn XP</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{verEvs.map((ev,i) => renderCard(ev,i,true))}</div>)}
-        {profTab === "mine" && (myEvs.length === 0 ? <div className="empty-msg">📝<br/><br/><strong>No submitted events</strong><br/>Tap + to submit your own side event</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{myEvs.map((ev,i) => renderCard(ev,i,true))}</div>)}
+        {profTab === "mine" && (myEvs.length === 0 ? <div className="empty-msg">📝<br/><br/><strong>No submitted events</strong><br/>Tap + to submit your own side event</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{myEvs.map((ev,i) => renderCard(ev,i,false))}</div>)}
 
         <button className="btn-outline" onClick={() => { setUser(null); toast("Signed out"); }} style={{width:"100%",marginTop:24}}>Sign out</button>
       </div>
