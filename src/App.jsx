@@ -311,76 +311,87 @@ export default function App() {
       setDark(loadState("dark", false));
       if (!loadState("onboarded", false)) setShowOnboarding(true);
 
-      if (hasSupabase()) {
-        // Check for Supabase auth session
-        const session = await db.getSession();
-        if (session?.user) {
-          const profile = await db.upsertProfile({
-            id: session.user.id,
-            name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || "Anon",
-            handle: session.user.user_metadata?.user_name ? `@${session.user.user_metadata.user_name}` : session.user.email,
-            pfp: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || "",
-            method: session.user.app_metadata?.provider === "twitter" ? "x" : "email",
-          });
-          if (profile) setUser({ ...profile, supaId: session.user.id });
-        }
-
-        // Load from Supabase
-        const uid = session?.user?.id;
-        const evs = await db.fetchEvents(conf);
-        if (evs) setEvents(evs);
-        else setEvents(loadState("events", null) || SEED);
-        if (uid) {
-          const [r, c, b, inc] = await Promise.all([
-            db.fetchRsvps(uid), db.fetchCheckins(uid),
-            db.fetchBookmarks(uid), db.fetchIncognito(uid),
-          ]);
-          if (r) setRsvps(r);
-          if (c) setCheckins(c);
-          if (b) setBmarks(b);
-          if (inc) setIncog(inc);
-          const fr = await db.fetchFriends(uid);
-          if (fr) {
-            setFriends(fr);
-            setVips(fr.filter(f => f.is_vip).map(f => f.handle));
+      try {
+        if (hasSupabase()) {
+          // Check for Supabase auth session
+          const session = await db.getSession();
+          if (session?.user) {
+            try {
+              const profile = await db.upsertProfile({
+                id: session.user.id,
+                name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || "Anon",
+                handle: session.user.user_metadata?.user_name ? `@${session.user.user_metadata.user_name}` : session.user.email,
+                pfp: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || "",
+                method: session.user.app_metadata?.provider === "x" ? "x" : "email",
+              });
+              if (profile) setUser({ ...profile, supaId: session.user.id });
+            } catch(e) { console.error("Profile upsert error:", e); }
           }
-        }
-      } else {
-        // Fallback: load everything from localStorage
-        setEvents(loadState("events", null) || SEED);
-        setUser(loadState("user", null));
-        setBmarks(loadState("bmarks", []));
-        setRsvps(loadState("rsvps", []));
-        setCheckins(loadState("checkins", []));
-        setFriends(loadState("friends", []));
-        setIncog(loadState("incog", []));
-        setPrivacy(loadState("privacy", { profilePublic: false }));
-        setVips(loadState("vips", []));
 
-        // Auth0 callback (only when no Supabase)
-        try {
-          const auth0 = await getAuth0();
-          if (auth0) {
-            const query = window.location.search;
-            if (query.includes("code=") && query.includes("state=")) {
-              await auth0.handleRedirectCallback();
-              window.history.replaceState(null, "", window.location.pathname);
-              const auth0User = await auth0.getUser();
-              if (auth0User) {
-                const xUser = {
-                  name: auth0User.name || auth0User.nickname || "Anon",
-                  handle: auth0User.nickname ? `@${auth0User.nickname}` : auth0User.email || "",
-                  pfp: auth0User.picture || "",
-                  method: "x",
-                };
-                setUser(xUser);
-                saveState("user", xUser);
-                setTimeout(() => toast("Signed in with X!"), 100);
+          // Load from Supabase
+          const uid = session?.user?.id;
+          try {
+            const evs = await db.fetchEvents(conf);
+            if (evs && evs.length > 0) setEvents(evs);
+            else setEvents(loadState("events", null) || SEED);
+          } catch(e) { console.error("Events fetch error:", e); setEvents(loadState("events", null) || SEED); }
+
+          if (uid) {
+            try {
+              const [r, c, b, inc] = await Promise.all([
+                db.fetchRsvps(uid), db.fetchCheckins(uid),
+                db.fetchBookmarks(uid), db.fetchIncognito(uid),
+              ]);
+              if (r) setRsvps(r);
+              if (c) setCheckins(c);
+              if (b) setBmarks(b);
+              if (inc) setIncog(inc);
+            } catch(e) { console.error("User data fetch error:", e); }
+            try {
+              const fr = await db.fetchFriends(uid);
+              if (fr) {
+                setFriends(fr);
+                setVips(fr.filter(f => f.is_vip).map(f => f.handle));
+              }
+            } catch(e) { console.error("Friends fetch error:", e); }
+          }
+        } else {
+          // Fallback: load everything from localStorage
+          setEvents(loadState("events", null) || SEED);
+          setUser(loadState("user", null));
+          setBmarks(loadState("bmarks", []));
+          setRsvps(loadState("rsvps", []));
+          setCheckins(loadState("checkins", []));
+          setFriends(loadState("friends", []));
+          setIncog(loadState("incog", []));
+          setPrivacy(loadState("privacy", { profilePublic: false }));
+          setVips(loadState("vips", []));
+
+          // Auth0 callback (only when no Supabase)
+          try {
+            const auth0 = await getAuth0();
+            if (auth0) {
+              const query = window.location.search;
+              if (query.includes("code=") && query.includes("state=")) {
+                await auth0.handleRedirectCallback();
+                window.history.replaceState(null, "", window.location.pathname);
+                const auth0User = await auth0.getUser();
+                if (auth0User) {
+                  const xUser = {
+                    name: auth0User.name || auth0User.nickname || "Anon",
+                    handle: auth0User.nickname ? `@${auth0User.nickname}` : auth0User.email || "",
+                    pfp: auth0User.picture || "",
+                    method: "x",
+                  };
+                  setUser(xUser);
+                  saveState("user", xUser);
+                  setTimeout(() => toast("Signed in with X!"), 100);
+                }
               }
             }
-          }
-        } catch(e) { console.error("Auth0 callback error", e); }
-      }
+          } catch(e) { console.error("Auth0 callback error", e); }
+        }
+      } catch(e) { console.error("loadData error:", e); }
       setReady(true);
     };
     loadData();
