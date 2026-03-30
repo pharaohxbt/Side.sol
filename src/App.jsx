@@ -965,18 +965,18 @@ export default function App() {
   // ── Friends View ──
   const renderFriends = () => {
     // Smart suggestions: people at events you're going to
-    const suggestedByOverlap = useMemo(() => FAKE_USERS
+    const suggestedByOverlap = FAKE_USERS
       .filter(u => !friendHandles.includes(u.handle))
       .map(u => { const shared = (FAKE_RSVPS[u.handle]||[]).filter(eid => rsvps.includes(eid)).length; return {...u, shared}; })
       .filter(s => s.shared > 0)
-      .sort((a,b) => b.shared - a.shared), [friendHandles, rsvps]);
+      .sort((a,b) => b.shared - a.shared);
     const otherSuggested = FAKE_USERS.filter(u => !friendHandles.includes(u.handle) && !suggestedByOverlap.find(s => s.handle === u.handle));
 
     // Overlap: my RSVPs matched with friends
-    const overlapData = useMemo(() => rsvps
+    const overlapData = rsvps
       .map(eid => { const ev = events.find(e => e.id === eid && e.conf === conf); const fr = fGoing(eid); return {ev, friends: fr}; })
       .filter(d => d.ev && d.friends.length > 0)
-      .sort((a,b) => (a.ev.date||"").localeCompare(b.ev.date||"")), [rsvps, events, friends, conf]);
+      .sort((a,b) => (a.ev.date||"").localeCompare(b.ev.date||""));
 
     // VIP friends with their next event
     const vipFriends = friends.filter(f => vips.includes(f.handle)).map(f => {
