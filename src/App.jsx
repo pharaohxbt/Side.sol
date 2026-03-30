@@ -318,7 +318,17 @@ export default function App() {
       if (c) setCheckins(c);
       if (b) setBmarks(b);
       if (inc) setIncog(inc);
-      if (fr) { setFriends(fr); setVips(fr.filter(f => f.is_vip).map(f => f.handle)); }
+      // Merge Supabase friends with localStorage friends (localStorage has pending + demo users)
+      const localFriends = loadState("friends", []);
+      const supaFriends = fr || [];
+      // Combine: Supabase friends take priority, then add any local-only friends not already present
+      const supaHandles = new Set(supaFriends.map(f => f.handle?.toLowerCase()));
+      const merged = [
+        ...supaFriends,
+        ...localFriends.filter(lf => !supaHandles.has(lf.handle?.toLowerCase())),
+      ];
+      setFriends(merged);
+      setVips(merged.filter(f => f.is_vip).map(f => f.handle));
     } catch(e) { console.error("loadUserData error:", e); }
   }, []);
 
