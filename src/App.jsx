@@ -352,21 +352,30 @@ export default function App() {
     if (hasSupabase()) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if ((event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") && session?.user) {
+          const u = session.user;
+          const meta = u.user_metadata || {};
+          // Always set user from session metadata (works even if DB is down)
+          const fallbackUser = {
+            id: u.id, supaId: u.id,
+            name: meta.name || meta.full_name || meta.user_name || "Anon",
+            handle: meta.user_name ? `@${meta.user_name}` : u.email || "",
+            pfp: meta.avatar_url || meta.picture || "",
+            method: u.app_metadata?.provider === "x" ? "x" : "email",
+          };
+          setUser(fallbackUser);
+          // Try to upsert profile + load user data (non-blocking)
           try {
             const profile = await db.upsertProfile({
-              id: session.user.id,
-              name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || "Anon",
-              handle: session.user.user_metadata?.user_name ? `@${session.user.user_metadata.user_name}` : session.user.email,
-              pfp: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || "",
-              method: session.user.app_metadata?.provider === "x" ? "x" : "email",
+              id: u.id, name: fallbackUser.name, handle: fallbackUser.handle,
+              pfp: fallbackUser.pfp, method: fallbackUser.method,
             });
-            if (profile) setUser({ ...profile, supaId: session.user.id });
-            await loadUserData(session.user.id);
-            // Clean up OAuth hash from URL
-            if (window.location.hash.includes("access_token")) {
-              window.history.replaceState(null, "", window.location.pathname);
-            }
-          } catch(e) { console.error("Auth state change error:", e); }
+            if (profile) setUser({ ...profile, supaId: u.id });
+          } catch(e) { console.error("Profile upsert error:", e); }
+          try { await loadUserData(u.id); } catch(e) { console.error("Load user data error:", e); }
+          // Clean up OAuth hash from URL
+          if (window.location.hash.includes("access_token")) {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
         } else if (event === "INITIAL_SESSION" && !session) {
           // No session — user is not signed in, that's fine
         } else if (event === "SIGNED_OUT") {
