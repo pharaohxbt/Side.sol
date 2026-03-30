@@ -568,24 +568,36 @@ export default function App() {
     const handle = h.startsWith("@") ? h : `@${h}`;
     if (friendHandles.map(x=>x.toLowerCase()).includes(handle.toLowerCase())) { toast("Already friends", "info"); return; }
 
-    if (user?.supaId && hasSupabase()) {
-      // Supabase: look up profile, or store as pending
-      const result = await db.addFriendByHandle(user.supaId, handle);
-      if (result.found && result.profile) {
-        setFriends(f => [...f, { ...result.profile, is_vip: false, friend_id: result.profile.id, pending: false }]);
-        toast(`Added ${result.profile.name}!`);
-      } else {
-        // Pending — will auto-resolve when they sign up
-        const name = handle.slice(1);
-        setFriends(f => [...f, { handle, name, method: "x", role: "", bio: "", notable: false, tags: [], pending: true }]);
-        toast(`Added ${name} — will link when they join!`, "info");
+    // Always check known demo users first (they aren't in Supabase)
+    const known = FAKE_USERS.find(f => f.handle.toLowerCase() === handle.toLowerCase());
+    if (known) {
+      setFriends(f => [...f, { ...known, pending: false }]);
+      // Also save to Supabase if available (best effort)
+      if (user?.supaId && hasSupabase()) {
+        db.addFriendByHandle(user.supaId, handle).catch(() => {});
       }
+      toast(`Added ${known.name}!`);
       return;
     }
 
-    // Fallback: local-only (check known users first)
-    const known = FAKE_USERS.find(f => f.handle.toLowerCase() === handle.toLowerCase());
-    if (known) { setFriends(f => [...f, known]); toast(`Added ${known.name}!`); return; }
+    if (user?.supaId && hasSupabase()) {
+      // Supabase: look up real profile, or store as pending
+      try {
+        const result = await db.addFriendByHandle(user.supaId, handle);
+        if (result.found && result.profile) {
+          setFriends(f => [...f, { ...result.profile, is_vip: false, friend_id: result.profile.id, pending: false }]);
+          toast(`Added ${result.profile.name}!`);
+          return;
+        }
+      } catch(e) { console.error("addFriendByHandle error:", e); }
+      // Pending — will auto-resolve when they sign up
+      const name = handle.slice(1);
+      setFriends(f => [...f, { handle, name, method: "x", role: "", bio: "", notable: false, tags: [], pending: true }]);
+      toast(`Added ${name} — will link when they join!`, "info");
+      return;
+    }
+
+    // Fallback: local-only unknown handle
     const name = handle.slice(1);
     setFriends(f => [...f, { handle, name, method: "x", role: "", bio: "", notable: false, tags: [] }]);
     toast(`Added ${name}!`);
