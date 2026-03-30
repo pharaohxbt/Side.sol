@@ -93,8 +93,33 @@ const getLevel=(xp)=>{let l=LEVELS[0];for(const lv of LEVELS)if(xp>=lv.xp)l=lv;r
 const getNext=(xp)=>{for(const lv of LEVELS)if(xp<lv.xp)return lv;return null;};
 
 const LEADERBOARD=[{name:"sol_maxi",xp:2800,handle:"@sol_maxi"},{name:"defi_sarah",xp:2100,handle:"@defi_sarah"},{name:"nft_collector",xp:1750,handle:"@nft_coll"},{name:"validator_vic",xp:1400,handle:"@val_vic"},{name:"mobile_dev",xp:1100,handle:"@mob_dev"},{name:"dao_king",xp:850,handle:"@dao_king"}];
-const FAKE_USERS=[{handle:"@SolanaLegend",name:"Sol Legend",method:"x"},{handle:"@DefiDegen",name:"DeFi Dan",method:"x"},{handle:"@NFTQueen",name:"Aria",method:"x"},{handle:"@ValidatorVic",name:"Vic",method:"x"},{handle:"@MobileMaxi",name:"Max",method:"x"}];
-const FAKE_RSVPS={"@SolanaLegend":["s1","s8","s12"],"@DefiDegen":["s2","s5","s8"],"@NFTQueen":["s3","s7","s1"],"@ValidatorVic":["s5","s6","s11"],"@MobileMaxi":["s4","s9","s1"]};
+const FAKE_USERS=[
+  {handle:"@SolanaLegend",name:"Sol Legend",method:"x",role:"Community OG",bio:"Day-one Solana maxi. Builder & collector.",notable:false,tags:["Community"]},
+  {handle:"@DefiDegen",name:"DeFi Dan",method:"x",role:"DeFi Researcher, Jupiter",bio:"Yield farming & MEV. DMs open.",notable:false,tags:["DeFi"]},
+  {handle:"@NFTQueen",name:"Aria",method:"x",role:"Creator & Collector",bio:"Metaplex council. Art meets blockchain.",notable:false,tags:["NFT","Community"]},
+  {handle:"@ValidatorVic",name:"Vic",method:"x",role:"Validator Operator",bio:"Running validators since epoch 1.",notable:false,tags:["Infra"]},
+  {handle:"@MobileMaxi",name:"Max",method:"x",role:"Mobile Dev, Solana Mobile",bio:"Building the Seeker dApp ecosystem.",notable:false,tags:["Mobile"]},
+  {handle:"@aeyakovenko",name:"Anatoly Yakovenko",method:"x",role:"Co-founder, Solana Labs",bio:"Building Solana.",notable:true,tags:["Founders"]},
+  {handle:"@rajgokal",name:"Raj Gokal",method:"x",role:"Co-founder, Solana Labs",bio:"Solana co-founder. Culture & community.",notable:true,tags:["Founders"]},
+  {handle:"@maboroshi_mert",name:"Mert",method:"x",role:"CEO, Helius",bio:"RPC infra & DAS. Building Helius.",notable:true,tags:["Founders","Infra"]},
+  {handle:"@armaniferrante",name:"Armani Ferrante",method:"x",role:"Founder, Coral / Backpack",bio:"Anchor framework. Building Backpack.",notable:true,tags:["Founders","Dev"]},
+  {handle:"@weremeow",name:"weremeow",method:"x",role:"Founder, Jupiter",bio:"Jupiter Exchange. DeFi for everyone.",notable:true,tags:["Founders","DeFi"]},
+  {handle:"@vibhu",name:"Vibhu Norby",method:"x",role:"CEO, DRiP",bio:"Compressed NFT distribution at scale.",notable:true,tags:["Founders","NFT"]},
+  {handle:"@Austin_Federa",name:"Austin Federa",method:"x",role:"Head of Strategy, Solana Foundation",bio:"Ecosystem growth & strategy.",notable:true,tags:["Founders"]},
+  {handle:"@MonkeDAO",name:"MonkeDAO",method:"x",role:"Community DAO",bio:"The OG Solana DAO. Bananas.",notable:true,tags:["Community","NFT"]},
+  {handle:"@SuperteamDAO",name:"Superteam",method:"x",role:"Global Solana Community",bio:"Helping Solana win worldwide.",notable:true,tags:["Community"]},
+  {handle:"@0xMert_",name:"Chase Barker",method:"x",role:"Dev Rel, Helius",bio:"Tutorials, docs, developer love.",notable:false,tags:["Dev","Infra"]},
+];
+const FAKE_RSVPS={
+  "@SolanaLegend":["s1","s8","s12"],"@DefiDegen":["s2","s5","s8"],"@NFTQueen":["s3","s7","s1"],
+  "@ValidatorVic":["s5","s6","s11"],"@MobileMaxi":["s4","s9","s1"],
+  "@aeyakovenko":["s6","s8","s12","s2"],"@rajgokal":["s8","s12","s5","s9"],
+  "@maboroshi_mert":["s2","s10","s6","s11"],"@armaniferrante":["s10","s2","s3"],
+  "@weremeow":["s2","s5","s8","s11"],"@vibhu":["s3","s7","s1"],
+  "@Austin_Federa":["s6","s8","s9","s12"],"@MonkeDAO":["s7","s8","s12"],
+  "@SuperteamDAO":["s8","s3","s6","s10"],"@0xMert_":["s2","s10","s4"],
+};
+const NOTABLE_TAGS=["All","Founders","DeFi","Dev","Infra","NFT","Community","Mobile"];
 const PULSE=[{u:"sol_maxi",a:"checked in at",e:"s1",t:"2m"},{u:"defi_sarah",a:"completed",q:"Builder Brain 🧠",t:"5m"},{u:"nft_collector",a:"checked in at",e:"s7",t:"8m"},{u:"validator_vic",a:"leveled up to",q:"OG ⚡",t:"12m"},{u:"mobile_dev",a:"checked in at",e:"s4",t:"15m"},{u:"dao_king",a:"completed",q:"Night Owl 🦉",t:"18m"}];
 
 // ════════════════════════════════════════
@@ -272,6 +297,9 @@ export default function App() {
   const [showCheckin, setShowCheckin] = useState(null);
   const [showHostCode, setShowHostCode] = useState(null);
   const [checkinInput, setCheckinInput] = useState("");
+  const [vips, setVips] = useState([]);
+  const [friendsTab, setFriendsTab] = useState("people");
+  const [notableFilter, setNotableFilter] = useState("All");
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [dark, setDark] = useState(false);
   const { toasts, push: toast } = useToast();
@@ -287,6 +315,7 @@ export default function App() {
     setIncog(loadState("incog", []));
     setPrivacy(loadState("privacy", { profilePublic: false }));
     setDark(loadState("dark", false));
+    setVips(loadState("vips", []));
     setReady(true);
     // Auth0 callback: handle redirect after login
     (async () => {
@@ -334,6 +363,7 @@ export default function App() {
   useEffect(() => { if (ready) saveState("checkins", checkins); }, [checkins, ready]);
   useEffect(() => { if (ready) saveState("friends", friends); }, [friends, ready]);
   useEffect(() => { if (ready) saveState("incog", incog); }, [incog, ready]);
+  useEffect(() => { if (ready) saveState("vips", vips); }, [vips, ready]);
   useEffect(() => { if (ready) saveState("privacy", privacy); }, [privacy, ready]);
   useEffect(() => { if (ready) { saveState("dark", dark); document.documentElement.style.background = dark ? "#0c0c14" : "#F5F3EE"; } }, [dark, ready]);
 
@@ -374,6 +404,9 @@ export default function App() {
   sortedEvs.forEach(e => { (grouped[e.date] = grouped[e.date] || []).push(e); });
   const friendHandles = friends.map(f => f.handle);
   const fGoing = (eid) => friends.filter(f => (FAKE_RSVPS[f.handle] || []).includes(eid));
+  const vipsGoing = (eid) => fGoing(eid).filter(f => vips.includes(f.handle));
+  const notableAtEvent = (eid) => FAKE_USERS.filter(u => u.notable && (FAKE_RSVPS[u.handle]||[]).includes(eid) && !friendHandles.includes(u.handle));
+  const togVip = (handle) => { setVips(v => v.includes(handle) ? v.filter(h => h !== handle) : [...v, handle]); };
 
   // ── Check quest completions ──
   const checkQuests = useCallback((newCI, newRV) => {
@@ -589,6 +622,7 @@ export default function App() {
     const verified = checkins.includes(ev.id);
     const hot = (ev.att||0) >= 100;
     const fg = fGoing(ev.id);
+    const vg = fg.filter(f => vips.includes(f.handle));
     const hasBanner = !!ev.banner;
 
     return (
@@ -627,8 +661,14 @@ export default function App() {
               <span className="card-m">📅 {fd(ev.date)}{ev.time ? ` · ${ev.time}` : ""}</span>
               <span className="card-m">📍 {ev.loc}</span>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              {fg.length > 0 && <div style={{display:"flex"}}>{fg.slice(0,3).map((fr,j) => <div key={fr.handle} style={{marginLeft:j?-8:0,zIndex:3-j}}><Avatar name={fr.name} s={18} bg={uc(fr.handle)}/></div>)}</div>}
+            <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+              {vg.length > 0 && <span className="vip-badge">⭐ {vg[0].name}{vg.length > 1 ? ` +${vg.length-1}` : ""}</span>}
+              {fg.length > 0 && (
+                <div style={{display:"flex",alignItems:"center",gap:4}}>
+                  <div style={{display:"flex"}}>{fg.slice(0,3).map((fr,j) => <div key={fr.handle} style={{marginLeft:j?-8:0,zIndex:3-j}}><Avatar name={fr.name} s={18} bg={uc(fr.handle)} pfp={fr.pfp}/></div>)}</div>
+                  <span style={{fontSize:10.5,fontWeight:600,color:"var(--accent)"}}>{fg.length <= 2 ? fg.map(f=>f.name.split(" ")[0]).join(" & ") : `${fg.length} friends`}</span>
+                </div>
+              )}
               <span className="card-att">👥 {ev.att}</span>
             </div>
           </div>
@@ -646,6 +686,7 @@ export default function App() {
     const verified = checkins.includes(ev.id);
     const isInc = incog.includes(ev.id);
     const fg = fGoing(ev.id);
+    const notableHere = notableAtEvent(ev.id);
 
     return (<>
       <div className="overlay" onClick={() => setSel(null)}/>
@@ -682,12 +723,18 @@ export default function App() {
             </div>
             <div className="info-cell" style={{marginBottom:12,animation:"fadeUp .4s .35s both"}}><span className="info-l">Location</span><span className="info-v">{ev.loc}</span></div>
             {ev.desc && <p style={{fontSize:13.5,color:"var(--muted)",lineHeight:1.65,marginBottom:12,textAlign:"left",animation:"fadeUp .4s .4s both"}}>{ev.desc}</p>}
-            {fg.length > 0 && <>
+            {(fg.length > 0 || notableHere.length > 0) && <>
               <hr className="dashed"/>
-              <p className="info-l" style={{marginBottom:8,textAlign:"left"}}>Friends going</p>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                {fg.map((fr,fi) => <div key={fr.handle} className="friend-chip" style={{animation:`fadeUp .3s ${.45+fi*.05}s both`}} onClick={() => { setSel(null); setFriendView(fr); }}><Avatar name={fr.name} s={20} bg={uc(fr.handle)}/><span>{fr.name}</span></div>)}
-              </div>
+              <p className="info-l" style={{marginBottom:8,textAlign:"left"}}>People you know · {fg.length + notableHere.length}</p>
+              {fg.length > 0 && <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:notableHere.length?10:0}}>
+                {fg.map((fr,fi) => <div key={fr.handle} className={`friend-chip ${vips.includes(fr.handle)?"vip":""}`} style={{animation:`fadeUp .3s ${.45+fi*.05}s both`}} onClick={() => { setSel(null); setFriendView(fr); }}>{vips.includes(fr.handle)&&<span style={{fontSize:10}}>⭐</span>}<Avatar name={fr.name} s={20} bg={uc(fr.handle)} pfp={fr.pfp}/><span>{fr.name}</span>{fr.role&&<span style={{fontSize:9,color:"var(--muted)",marginLeft:2}}>{fr.role.split(",")[0]}</span>}</div>)}
+              </div>}
+              {notableHere.length > 0 && <>
+                <p style={{fontSize:9.5,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6,textAlign:"left",fontFamily:"var(--fm)"}}>Notable attendees</p>
+                <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                  {notableHere.map((u,ui) => <div key={u.handle} className="friend-chip notable" style={{animation:`fadeUp .3s ${.55+ui*.05}s both`}} onClick={() => { setSel(null); setFriendView(u); }}><Avatar name={u.name} s={20} bg={uc(u.handle)}/><span>{u.name}</span><span style={{fontSize:9,color:"var(--muted)"}}>{u.role.split(",")[0]}</span></div>)}
+                </div>
+              </>}
             </>}
             <hr className="dashed"/>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -917,59 +964,215 @@ export default function App() {
 
   // ── Friends View ──
   const renderFriends = () => {
-    const suggested = FAKE_USERS.filter(u => !friendHandles.includes(u.handle));
+    // Smart suggestions: people at events you're going to
+    const suggestedByOverlap = useMemo(() => FAKE_USERS
+      .filter(u => !friendHandles.includes(u.handle))
+      .map(u => { const shared = (FAKE_RSVPS[u.handle]||[]).filter(eid => rsvps.includes(eid)).length; return {...u, shared}; })
+      .filter(s => s.shared > 0)
+      .sort((a,b) => b.shared - a.shared), [friendHandles, rsvps]);
+    const otherSuggested = FAKE_USERS.filter(u => !friendHandles.includes(u.handle) && !suggestedByOverlap.find(s => s.handle === u.handle));
+
+    // Overlap: my RSVPs matched with friends
+    const overlapData = useMemo(() => rsvps
+      .map(eid => { const ev = events.find(e => e.id === eid && e.conf === conf); const fr = fGoing(eid); return {ev, friends: fr}; })
+      .filter(d => d.ev && d.friends.length > 0)
+      .sort((a,b) => (a.ev.date||"").localeCompare(b.ev.date||"")), [rsvps, events, friends, conf]);
+
+    // VIP friends with their next event
+    const vipFriends = friends.filter(f => vips.includes(f.handle)).map(f => {
+      const theirEvs = (FAKE_RSVPS[f.handle]||[]).map(eid => events.find(e => e.id === eid && e.conf === conf)).filter(Boolean).sort((a,b) => a.date.localeCompare(b.date));
+      return {...f, nextEv: theirEvs[0] || null, evCount: theirEvs.length};
+    });
+
+    // Notable people for directory
+    const notableList = FAKE_USERS.filter(u => u.notable && (notableFilter === "All" || (u.tags||[]).includes(notableFilter)));
+
     return (
       <div className="anim-in">
-        <h1 className="vt" style={{marginTop:18}}>👥 Friends</h1>
-        <p className="vs">See what your crew is hitting</p>
-        <div style={{display:"flex",gap:8,marginBottom:20}}>
-          <div className="sbar" style={{flex:1}}>
-            <span style={{color:"var(--muted)",fontFamily:"var(--fm)",fontSize:14}}>@</span>
-            <input placeholder="Add by handle..." value={addFQ} onChange={e => setAddFQ(e.target.value)}
-              onKeyDown={e => { if(e.key==="Enter"&&addFQ) { addFriend(addFQ); setAddFQ(""); } }}/>
-          </div>
-          <button className="btn-sm" onClick={() => { if(addFQ) { addFriend(addFQ); setAddFQ(""); } }} style={{padding:"10px 20px"}}>Add</button>
+        <h1 className="vt" style={{marginTop:18}}>👥 Network</h1>
+        <p className="vs">Find the people you want to meet</p>
+
+        <div className="tab-bar" style={{marginBottom:16}}>
+          {[{id:"people",l:"👥 People"},{id:"overlap",l:"📍 Overlap"},{id:"notable",l:"⭐ Notable"}].map(t => (
+            <button key={t.id} className={`tab ${friendsTab===t.id?"on":""}`} onClick={() => setFriendsTab(t.id)}>{t.l}</button>
+          ))}
         </div>
-        {friends.length > 0 && <>
-          <p className="section-label">Your friends · {friends.length}</p>
-          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-            {friends.map((fr,i) => {
-              const frE = events.filter(e => (FAKE_RSVPS[fr.handle]||[]).includes(e.id));
-              return (
-                <div key={fr.handle} className="friend-row" onClick={() => setFriendView(fr)} style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
-                  <Avatar name={fr.name} s={38} bg={uc(fr.handle)}/>
-                  <div style={{flex:1}}>
-                    <p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>{fr.name}</p>
-                    <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{fr.handle} · <span style={{color:"var(--accent)",fontWeight:600}}>{frE.length} events</span></p>
+
+        {/* ═══ PEOPLE TAB ═══ */}
+        {friendsTab === "people" && <>
+          <div style={{display:"flex",gap:8,marginBottom:16}}>
+            <div className="sbar" style={{flex:1}}>
+              <span style={{color:"var(--muted)",fontFamily:"var(--fm)",fontSize:14}}>@</span>
+              <input placeholder="Add by handle..." value={addFQ} onChange={e => setAddFQ(e.target.value)}
+                onKeyDown={e => { if(e.key==="Enter"&&addFQ) { addFriend(addFQ); setAddFQ(""); } }}/>
+            </div>
+            <button className="btn-sm" onClick={() => { if(addFQ) { addFriend(addFQ); setAddFQ(""); } }} style={{padding:"10px 20px"}}>Add</button>
+          </div>
+
+          {/* VIP / Must Meet Section */}
+          {vipFriends.length > 0 && <>
+            <p className="section-label">⭐ Must meet · {vipFriends.length}</p>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+              {vipFriends.map((fr,i) => {
+                const cat = fr.nextEv ? (CATS[fr.nextEv.cat]||CATS.Other) : null;
+                return (
+                  <div key={fr.handle} className="friend-row vip-row" onClick={() => setFriendView(fr)} style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
+                    <Avatar name={fr.name} s={42} bg={uc(fr.handle)} pfp={fr.pfp}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:5}}>
+                        <p style={{fontSize:15,fontWeight:700,fontFamily:"var(--fd)"}}>{fr.name}</p>
+                        <span style={{fontSize:10,color:"#F9AB00"}}>⭐</span>
+                      </div>
+                      {fr.role && <p style={{fontSize:11,color:"var(--muted)",marginTop:1}}>{fr.role}</p>}
+                      {fr.nextEv && <div style={{marginTop:5,padding:"5px 10px",background:cat?cbg(cat):"var(--bg)",borderRadius:10,borderLeft:`3px solid ${cat?cat.ac:"var(--accent)"}`,display:"inline-flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600}}>
+                        <span>{cat?.em}</span> {fr.nextEv.title} · {fd(fr.nextEv.date)}
+                      </div>}
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                      <span style={{fontSize:16,fontWeight:800,fontFamily:"var(--fm)",color:"var(--accent)"}}>{fr.evCount}</span>
+                      <span style={{fontSize:9,color:"var(--muted)"}}>events</span>
+                    </div>
                   </div>
-                  <button className="ib-sm" onClick={e => { e.stopPropagation(); setFriends(f => f.filter(x => x.handle !== fr.handle)); toast("Removed"); }} style={{color:"var(--muted)"}}>✕</button>
+                );
+              })}
+            </div>
+          </>}
+
+          {/* All Friends */}
+          {friends.length > 0 && <>
+            <p className="section-label">Your friends · {friends.length}</p>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+              {friends.map((fr,i) => {
+                const frE = events.filter(e => (FAKE_RSVPS[fr.handle]||[]).includes(e.id));
+                const isVip = vips.includes(fr.handle);
+                return (
+                  <div key={fr.handle} className="friend-row" onClick={() => setFriendView(fr)} style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
+                    <Avatar name={fr.name} s={38} bg={uc(fr.handle)} pfp={fr.pfp}/>
+                    <div style={{flex:1}}>
+                      <p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>{fr.name}</p>
+                      <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{fr.role || fr.handle} · <span style={{color:"var(--accent)",fontWeight:600}}>{frE.length} events</span></p>
+                    </div>
+                    <button className="ib-sm" onClick={e => { e.stopPropagation(); togVip(fr.handle); }} style={{color:isVip?"#F9AB00":"var(--muted)",fontSize:14}} title="Must meet">{isVip ? "⭐" : "☆"}</button>
+                    <button className="ib-sm" onClick={e => { e.stopPropagation(); setFriends(f => f.filter(x => x.handle !== fr.handle)); setVips(v => v.filter(h => h !== fr.handle)); toast("Removed"); }} style={{color:"var(--muted)"}}>✕</button>
+                  </div>
+                );
+              })}
+            </div>
+          </>}
+
+          {/* Smart Suggestions */}
+          {suggestedByOverlap.length > 0 && <>
+            <p className="section-label">At your events</p>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+              {suggestedByOverlap.map((u,i) => (
+                <div key={u.handle} className="friend-row" style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`,border:"1.5px dashed rgba(153,69,255,.2)"}}>
+                  <Avatar name={u.name} s={34} bg={uc(u.handle)}/>
+                  <div style={{flex:1}}>
+                    <p style={{fontSize:14,fontWeight:600,fontFamily:"var(--fd)"}}>{u.name}{u.notable&&<span style={{fontSize:10,marginLeft:4,color:"#F9AB00"}}>⭐</span>}</p>
+                    <p style={{fontSize:12,color:"var(--muted)"}}>{u.role || u.handle}</p>
+                    <p style={{fontSize:11,color:"var(--accent)",fontWeight:600,marginTop:2}}>{u.shared} mutual event{u.shared!==1?"s":""}</p>
+                  </div>
+                  <button className="btn-sm" onClick={() => addFriend(u.handle)} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"7px 16px"}}>+ Add</button>
+                </div>
+              ))}
+            </div>
+          </>}
+
+          {/* Other Suggestions */}
+          {otherSuggested.length > 0 && <>
+            <p className="section-label">People you may know</p>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {otherSuggested.slice(0,5).map((u,i) => (
+                <div key={u.handle} className="friend-row" style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`,border:"1px dashed var(--border)"}}>
+                  <Avatar name={u.name} s={34} bg={uc(u.handle)}/>
+                  <div style={{flex:1}}>
+                    <p style={{fontSize:14,fontWeight:600,fontFamily:"var(--fd)"}}>{u.name}{u.notable&&<span style={{fontSize:10,marginLeft:4,color:"#F9AB00"}}>⭐</span>}</p>
+                    <p style={{fontSize:12,color:"var(--muted)"}}>{u.role || u.handle}</p>
+                  </div>
+                  <button className="btn-sm" onClick={() => addFriend(u.handle)} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"7px 16px"}}>+ Add</button>
+                </div>
+              ))}
+            </div>
+          </>}
+
+          {friends.length === 0 && suggestedByOverlap.length === 0 && <div className="empty-msg">👥<br/><br/><strong>No friends yet</strong><br/>Add friends by their handle or browse Notable people</div>}
+        </>}
+
+        {/* ═══ OVERLAP TAB ═══ */}
+        {friendsTab === "overlap" && <>
+          {rsvps.length === 0 ? (
+            <div className="empty-msg">📍<br/><br/><strong>RSVP to events first</strong><br/>Once you RSVP, we'll show you which friends will be at the same events</div>
+          ) : overlapData.length === 0 ? (
+            <div className="empty-msg">👥<br/><br/><strong>No overlap yet</strong><br/>Add friends to see who'll be at the same events as you</div>
+          ) : <>
+            <p className="section-label">Where you'll see friends · {overlapData.length} events</p>
+            {overlapData.map(({ev, friends: evFriends}, i) => {
+              const cat = CATS[ev.cat] || CATS.Other;
+              const evVips = evFriends.filter(f => vips.includes(f.handle));
+              return (
+                <div key={ev.id} style={{marginBottom:16,animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
+                  <div className="ev-card" style={{background:cbg(cat),borderLeft:`4px solid ${cat.ac}`,marginBottom:8}} onClick={() => setSel(ev)}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                      <div>
+                        <span className="pill" style={{background:`${cfg(cat)}14`,color:cfg(cat),fontSize:10,marginBottom:3}}>{cat.em} {ev.cat}</span>
+                        <h4 className="card-t-sm">{ev.title}</h4>
+                        <span className="card-m">{fd(ev.date)} · {ev.time}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",paddingLeft:8}}>
+                    {evFriends.map(fr => (
+                      <div key={fr.handle} className={`friend-chip ${vips.includes(fr.handle)?"vip":""}`} onClick={() => setFriendView(fr)} style={{fontSize:12}}>
+                        {vips.includes(fr.handle)&&<span style={{fontSize:9}}>⭐</span>}
+                        <Avatar name={fr.name} s={18} bg={uc(fr.handle)} pfp={fr.pfp}/>
+                        <span>{fr.name.split(" ")[0]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </>}
+        </>}
+
+        {/* ═══ NOTABLE TAB ═══ */}
+        {friendsTab === "notable" && <>
+          <p style={{fontSize:13.5,color:"var(--muted)",marginBottom:14,lineHeight:1.5}}>Solana ecosystem people attending {cd?.short}. Add them to track their events.</p>
+          <div className="scr" style={{marginBottom:16}}>
+            {NOTABLE_TAGS.map(t => <button key={t} className={`tag ${notableFilter===t?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setNotableFilter(t)}>{t}</button>)}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {notableList.map((u,i) => {
+              const isFriend = friendHandles.includes(u.handle);
+              const isVip = vips.includes(u.handle);
+              const theirEvs = (FAKE_RSVPS[u.handle]||[]).filter(eid => events.find(e => e.id === eid && e.conf === conf));
+              return (
+                <div key={u.handle} className="friend-row" onClick={() => setFriendView(u)} style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
+                  <Avatar name={u.name} s={40} bg={uc(u.handle)}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:5}}>
+                      <p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>{u.name}</p>
+                      {u.notable && <span style={{fontSize:9,background:"linear-gradient(135deg,rgba(153,69,255,.1),rgba(20,241,149,.08))",color:"var(--accent)",padding:"2px 7px",borderRadius:100,fontWeight:700,border:"1px solid rgba(153,69,255,.12)"}}>Notable</span>}
+                    </div>
+                    <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{u.role}</p>
+                    <p style={{fontSize:11,color:"var(--accent)",fontWeight:600,marginTop:2}}>{theirEvs.length} events at {cd?.short}</p>
+                  </div>
+                  <div style={{display:"flex",gap:4}}>
+                    {isFriend && <button className="ib-sm" onClick={e => { e.stopPropagation(); togVip(u.handle); }} style={{color:isVip?"#F9AB00":"var(--muted)",fontSize:14}} title="Must meet">{isVip ? "⭐" : "☆"}</button>}
+                    {!isFriend && <button className="btn-sm" onClick={e => { e.stopPropagation(); addFriend(u.handle); }} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"7px 14px",fontSize:11}}>+ Add</button>}
+                  </div>
                 </div>
               );
             })}
           </div>
         </>}
-        {suggested.length > 0 && <>
-          <p className="section-label">People you may know</p>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {suggested.map((u,i) => (
-              <div key={u.handle} className="friend-row" style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`,border:"1px dashed var(--border)"}}>
-                <Avatar name={u.name} s={34} bg={uc(u.handle)}/>
-                <div style={{flex:1}}>
-                  <p style={{fontSize:14,fontWeight:600,fontFamily:"var(--fd)"}}>{u.name}</p>
-                  <p style={{fontSize:12,color:"var(--muted)"}}>{u.handle}</p>
-                </div>
-                <button className="btn-sm" onClick={() => addFriend(u.handle)} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"7px 16px"}}>+ Add</button>
-              </div>
-            ))}
-          </div>
-        </>}
-        {friends.length === 0 && suggested.length === 0 && <div className="empty-msg">👥<br/><br/><strong>No friends yet</strong><br/>Add friends by their handle to see what events they're attending</div>}
       </div>
     );
   };
 
   // ── Friend Profile ──
   const renderFriendProfile = (fr) => {
+    const isFrFriend = friendHandles.includes(fr.handle);
     const frRsvpIds = (FAKE_RSVPS[fr.handle]||[]).filter(eid => !incog.includes(eid));
     const frE = events.filter(e => frRsvpIds.includes(e.id) && e.conf === conf);
     const frCheckins = Math.max(0, frRsvpIds.length - 1);
@@ -984,17 +1187,26 @@ export default function App() {
       <div className="modal" style={{padding:0}}>
         <div className="mh" style={{padding:"13px 16px",borderBottom:"1px solid var(--border)"}}>
           <button className="ib" onClick={() => setFriendView(null)}>←</button>
-          <button className="ib-sm" onClick={() => { setFriends(f => f.filter(x => x.handle !== fr.handle)); setFriendView(null); toast("Removed"); }} style={{color:"#BF360C",fontSize:12}}>Remove</button>
+          <div style={{display:"flex",gap:6}}>
+            {isFrFriend && <button className="ib" onClick={() => togVip(fr.handle)} style={{color:vips.includes(fr.handle)?"#F9AB00":"var(--muted)",fontSize:16}} title="Must meet">{vips.includes(fr.handle)?"⭐":"☆"}</button>}
+            {isFrFriend ? <button className="ib-sm" onClick={() => { setFriends(f => f.filter(x => x.handle !== fr.handle)); setVips(v => v.filter(h => h !== fr.handle)); setFriendView(null); toast("Removed"); }} style={{color:"#BF360C",fontSize:12}}>Remove</button>
+            : <button className="btn-sm" onClick={() => { addFriend(fr.handle); }} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"7px 16px",fontSize:12}}>+ Add</button>}
+          </div>
         </div>
         <div style={{padding:"0 16px 28px"}}>
           <div className="profile-hero" style={{marginTop:8}}>
             <div className="profile-hero-bg"/>
             <div style={{position:"relative",zIndex:1}}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
-                <Avatar name={fr.name} s={52} bg={uc(fr.handle)}/>
+                <Avatar name={fr.name} s={52} bg={uc(fr.handle)} pfp={fr.pfp}/>
                 <div style={{flex:1}}>
-                  <h2 style={{fontSize:18,fontWeight:800,color:"white"}}>{fr.name}</h2>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <h2 style={{fontSize:18,fontWeight:800,color:"white"}}>{fr.name}</h2>
+                    {fr.notable && <span style={{fontSize:9,background:"rgba(249,171,0,.15)",color:"#F9AB00",padding:"2px 7px",borderRadius:100,fontWeight:700}}>Notable</span>}
+                  </div>
                   <p style={{fontSize:12,color:"rgba(255,255,255,.6)",display:"flex",alignItems:"center",gap:3}}>{fr.method==="x"&&<XI s={10}/>}{fr.handle}</p>
+                  {fr.role && <p style={{fontSize:11,color:"rgba(255,255,255,.45)",marginTop:3}}>{fr.role}</p>}
+                  {fr.bio && <p style={{fontSize:11,color:"rgba(255,255,255,.35)",marginTop:2,fontStyle:"italic"}}>{fr.bio}</p>}
                   <div style={{display:"flex",gap:5,marginTop:6}}><span className="prof-stat">{frLevel.n}</span><span className="prof-stat">{frXP} XP</span></div>
                 </div>
               </div>
@@ -1325,9 +1537,13 @@ export default function App() {
         /* ═══ FRIENDS ═══ */
         .friend-chip{display:flex;align-items:center;gap:7px;background:var(--surface);border-radius:100px;padding:5px 14px 5px 5px;cursor:pointer;font-size:12.5px;font-weight:600;transition:all .2s cubic-bezier(.16,1,.3,1);border:1px solid var(--border);box-shadow:var(--sh-sm);}
         .friend-chip:hover{border-color:var(--accent);box-shadow:var(--sh-glow);transform:translateY(-1px);}
+        .friend-chip.vip{border-color:rgba(249,171,0,.25);background:linear-gradient(135deg,rgba(249,171,0,.06),rgba(153,69,255,.04));}
+        .friend-chip.notable{border:1px dashed var(--border);}
         .friend-row{display:flex;align-items:center;gap:14px;background:var(--surface);border-radius:18px;padding:14px 18px;border:1px solid var(--border);cursor:pointer;transition:all .25s cubic-bezier(.16,1,.3,1);box-shadow:var(--sh-sm);}
         .friend-row:hover{border-color:rgba(153,69,255,.15);box-shadow:var(--sh-glow);transform:translateY(-3px);}
         .friend-row:active{transform:translateY(-1px);}
+        .vip-row{border-color:rgba(249,171,0,.2);background:linear-gradient(135deg,rgba(249,171,0,.04),rgba(153,69,255,.02));box-shadow:0 0 0 1px rgba(249,171,0,.06),var(--sh-sm);}
+        .vip-badge{font-size:10px;font-weight:700;color:#F9AB00;background:linear-gradient(135deg,rgba(249,171,0,.1),rgba(153,69,255,.06));padding:3px 9px;border-radius:100px;white-space:nowrap;border:1px solid rgba(249,171,0,.15);}
         .empty-msg{text-align:center;padding:48px 28px;color:var(--muted);font-size:14.5px;line-height:1.7;}
 
         /* ═══ TABS ═══ */
