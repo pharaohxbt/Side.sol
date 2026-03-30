@@ -279,7 +279,7 @@ export async function getSession() {
 export async function signInWithTwitter() {
   if (!hasSupabase()) return null;
   const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "twitter",
+    provider: "x",
     options: { redirectTo: window.location.origin },
   });
   if (error) { console.error("signInWithTwitter:", error); return null; }
