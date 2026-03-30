@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createAuth0Client } from "@auth0/auth0-spa-js";
+import * as db from "./lib/db.js";
+import { supabase, hasSupabase } from "./lib/supabase.js";
 
 // ════════════════════════════════════════
 // AUTH0
@@ -123,16 +125,10 @@ const NOTABLE_TAGS=["All","Founders","DeFi","Dev","Infra","NFT","Community","Mob
 const PULSE=[{u:"sol_maxi",a:"checked in at",e:"s1",t:"2m"},{u:"defi_sarah",a:"completed",q:"Builder Brain 🧠",t:"5m"},{u:"nft_collector",a:"checked in at",e:"s7",t:"8m"},{u:"validator_vic",a:"leveled up to",q:"OG ⚡",t:"12m"},{u:"mobile_dev",a:"checked in at",e:"s4",t:"15m"},{u:"dao_king",a:"completed",q:"Night Owl 🦉",t:"18m"}];
 
 // ════════════════════════════════════════
-// STORAGE (localStorage for Vercel)
+// STORAGE (Supabase with localStorage fallback)
 // ════════════════════════════════════════
-function loadState(key, fallback) {
-  if (typeof window === "undefined") return fallback;
-  try { const v = window.localStorage.getItem("ss_" + key); return v ? JSON.parse(v) : fallback; } catch(e) { return fallback; }
-}
-function saveState(key, value) {
-  if (typeof window === "undefined") return;
-  try { window.localStorage.setItem("ss_" + key, JSON.stringify(value)); } catch(e) {}
-}
+const loadState = db.loadLocal;
+const saveState = db.saveLocal;
 
 // ════════════════════════════════════════
 // CLIPBOARD
@@ -308,44 +304,106 @@ export default function App() {
   const [dark, setDark] = useState(false);
   const { toasts, push: toast } = useToast();
 
-  // ── Load from localStorage ──
+  // ── Load data (Supabase → localStorage fallback) ──
   useEffect(() => {
-    setEvents(loadState("events", null) || SEED);
-    setUser(loadState("user", null));
-    setBmarks(loadState("bmarks", []));
-    setRsvps(loadState("rsvps", []));
-    setCheckins(loadState("checkins", []));
-    setFriends(loadState("friends", []));
-    setIncog(loadState("incog", []));
-    setPrivacy(loadState("privacy", { profilePublic: false }));
-    setDark(loadState("dark", false));
-    setVips(loadState("vips", []));
-    if (!loadState("onboarded", false)) setShowOnboarding(true);
-    setReady(true);
-    // Auth0 callback: handle redirect after login
-    (async () => {
-      try {
-        const auth0 = await getAuth0();
-        if (!auth0) return;
-        const query = window.location.search;
-        if (query.includes("code=") && query.includes("state=")) {
-          await auth0.handleRedirectCallback();
-          window.history.replaceState(null, "", window.location.pathname);
-          const auth0User = await auth0.getUser();
-          if (auth0User) {
-            const xUser = {
-              name: auth0User.name || auth0User.nickname || "Anon",
-              handle: auth0User.nickname ? `@${auth0User.nickname}` : auth0User.email || "",
-              pfp: auth0User.picture || "",
-              method: "x",
-            };
-            setUser(xUser);
-            saveState("user", xUser);
-            setTimeout(() => toast("Signed in with X!"), 100);
+    const loadData = async () => {
+      // Always load UI prefs from localStorage
+      setDark(loadState("dark", false));
+      if (!loadState("onboarded", false)) setShowOnboarding(true);
+
+      if (hasSupabase()) {
+        // Check for Supabase auth session
+        const session = await db.getSession();
+        if (session?.user) {
+          const profile = await db.upsertProfile({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || "Anon",
+            handle: session.user.user_metadata?.user_name ? `@${session.user.user_metadata.user_name}` : session.user.email,
+            pfp: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || "",
+            method: session.user.app_metadata?.provider === "twitter" ? "x" : "email",
+          });
+          if (profile) setUser({ ...profile, supaId: session.user.id });
+        }
+
+        // Load from Supabase
+        const uid = session?.user?.id;
+        const evs = await db.fetchEvents(conf);
+        if (evs) setEvents(evs);
+        else setEvents(loadState("events", null) || SEED);
+        if (uid) {
+          const [r, c, b, inc] = await Promise.all([
+            db.fetchRsvps(uid), db.fetchCheckins(uid),
+            db.fetchBookmarks(uid), db.fetchIncognito(uid),
+          ]);
+          if (r) setRsvps(r);
+          if (c) setCheckins(c);
+          if (b) setBmarks(b);
+          if (inc) setIncog(inc);
+          const fr = await db.fetchFriends(uid);
+          if (fr) {
+            setFriends(fr);
+            setVips(fr.filter(f => f.is_vip).map(f => f.handle));
           }
         }
-      } catch(e) { console.error("Auth0 callback error", e); }
-    })();
+      } else {
+        // Fallback: load everything from localStorage
+        setEvents(loadState("events", null) || SEED);
+        setUser(loadState("user", null));
+        setBmarks(loadState("bmarks", []));
+        setRsvps(loadState("rsvps", []));
+        setCheckins(loadState("checkins", []));
+        setFriends(loadState("friends", []));
+        setIncog(loadState("incog", []));
+        setPrivacy(loadState("privacy", { profilePublic: false }));
+        setVips(loadState("vips", []));
+
+        // Auth0 callback (only when no Supabase)
+        try {
+          const auth0 = await getAuth0();
+          if (auth0) {
+            const query = window.location.search;
+            if (query.includes("code=") && query.includes("state=")) {
+              await auth0.handleRedirectCallback();
+              window.history.replaceState(null, "", window.location.pathname);
+              const auth0User = await auth0.getUser();
+              if (auth0User) {
+                const xUser = {
+                  name: auth0User.name || auth0User.nickname || "Anon",
+                  handle: auth0User.nickname ? `@${auth0User.nickname}` : auth0User.email || "",
+                  pfp: auth0User.picture || "",
+                  method: "x",
+                };
+                setUser(xUser);
+                saveState("user", xUser);
+                setTimeout(() => toast("Signed in with X!"), 100);
+              }
+            }
+          }
+        } catch(e) { console.error("Auth0 callback error", e); }
+      }
+      setReady(true);
+    };
+    loadData();
+
+    // Listen for Supabase auth changes
+    if (hasSupabase()) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === "SIGNED_IN" && session?.user) {
+          const profile = await db.upsertProfile({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || "Anon",
+            handle: session.user.user_metadata?.user_name ? `@${session.user.user_metadata.user_name}` : session.user.email,
+            pfp: session.user.user_metadata?.avatar_url || "",
+            method: session.user.app_metadata?.provider === "twitter" ? "x" : "email",
+          });
+          if (profile) setUser({ ...profile, supaId: session.user.id });
+          toast("Signed in!");
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+        }
+      });
+      return () => subscription.unsubscribe();
+    }
     // Deep link: open event from URL hash
     const hash = window.location.hash;
     if (hash.startsWith("#event=")) {
@@ -432,13 +490,15 @@ export default function App() {
   const togBm = (id) => {
     const wasSaved = bmarks.includes(id);
     setBmarks(b => wasSaved ? b.filter(x => x !== id) : [...b, id]);
+    if (user?.supaId) db.toggleBookmark(user.supaId, id, wasSaved);
     toast(wasSaved ? "Removed from saved" : "Event saved", "info");
   };
 
-  const togRsvp = (id) => {
+  const togRsvp = async (id) => {
     if (rsvps.includes(id)) {
       setRsvps(r => r.filter(x => x !== id));
       setEvents(es => es.map(e => e.id === id ? { ...e, att: Math.max(0, (e.att||1) - 1) } : e));
+      if (user?.supaId) db.removeRsvp(user.supaId, id);
       toast("RSVP cancelled");
     } else {
       const ev = events.find(e => e.id === id);
@@ -446,17 +506,19 @@ export default function App() {
       const newRsvps = [...rsvps, id];
       setRsvps(newRsvps);
       setEvents(es => es.map(e => e.id === id ? { ...e, att: (e.att||0) + 1 } : e));
+      if (user?.supaId) db.addRsvp(user.supaId, id);
       toast("RSVP'd! Check in at the event for XP", "info");
       setTimeout(() => checkQuests(checkins, newRsvps), 300);
     }
   };
 
-  const handleCheckin = (evId, code) => {
+  const handleCheckin = async (evId, code) => {
     const correct = getCheckInCode(evId);
     if (code.toUpperCase().trim() !== correct) { toast("Wrong code — try again", "error"); return false; }
     if (checkins.includes(evId)) { toast("Already checked in", "info"); return true; }
     const newCI = [...checkins, evId];
     setCheckins(newCI);
+    if (user?.supaId) db.addCheckin(user.supaId, evId);
     toast("Checked in! ✓ XP unlocked");
     setTimeout(() => checkQuests(newCI, rsvps), 400);
     return true;
@@ -465,10 +527,11 @@ export default function App() {
   const togIncog = (id) => {
     const wasHidden = incog.includes(id);
     setIncog(ic => wasHidden ? ic.filter(x => x !== id) : [...ic, id]);
+    if (user?.supaId) db.toggleIncognito(user.supaId, id, wasHidden);
     toast(wasHidden ? "Now visible to friends" : "Hidden from friends", "info");
   };
 
-  const delEv = (id) => { setEvents(es => es.filter(e => e.id !== id)); setSel(null); toast("Event deleted"); };
+  const delEv = async (id) => { setEvents(es => es.filter(e => e.id !== id)); setSel(null); if (hasSupabase()) await db.deleteEvent(id); toast("Event deleted"); };
 
   const shareEv = async (ev) => {
     const base = window.location.origin + window.location.pathname;
@@ -495,6 +558,19 @@ export default function App() {
   };
 
   const handleAuth = async (method) => {
+    if (hasSupabase()) {
+      if (method === "x") {
+        await db.signInWithTwitter();
+        return;
+      }
+      if (!af.email) { toast("Email required", "error"); return; }
+      await db.signInWithEmail(af.email, af.name || "Anon");
+      setShowAuth(false);
+      setAf({ email: "", name: "" });
+      toast("Check your email for a login link!", "info");
+      return;
+    }
+    // Fallback: Auth0 / local
     if (method === "x") {
       const auth0 = await getAuth0();
       if (!auth0) { toast("Auth not configured", "error"); return; }
@@ -540,10 +616,22 @@ export default function App() {
       reader.onload = (ev) => sF(prev => ({...prev, banner: ev.target.result}));
       reader.readAsDataURL(file);
     };
-    const submit = () => {
+    const submit = async () => {
       if (!validate()) return;
-      if (isE) { setEvents(es => es.map(e => e.id === initial.id ? {...e,...f} : e)); toast("Updated!"); }
-      else { setEvents(es => [{ ...f, id: gid(), att: 0, by: user?.handle || "anon", conf }, ...es]); toast("Submitted!"); }
+      if (hasSupabase()) {
+        if (isE) {
+          const updated = await db.updateEvent(initial.id, f);
+          if (updated) setEvents(es => es.map(e => e.id === initial.id ? {...e,...updated} : e));
+          toast("Updated!");
+        } else {
+          const created = await db.createEvent({ ...f, conf }, user?.supaId);
+          if (created) setEvents(es => [created, ...es]);
+          toast("Submitted!");
+        }
+      } else {
+        if (isE) { setEvents(es => es.map(e => e.id === initial.id ? {...e,...f} : e)); toast("Updated!"); }
+        else { setEvents(es => [{ ...f, id: gid(), att: 0, by: user?.handle || "anon", conf }, ...es]); toast("Submitted!"); }
+      }
       onClose();
     };
     return (<>
@@ -1395,7 +1483,7 @@ export default function App() {
         {profTab === "verified" && (verEvs.length === 0 ? <div className="empty-msg">📍<br/><br/><strong>No check-ins yet</strong><br/>RSVP to events, then check in at the venue to earn XP</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{verEvs.map((ev,i) => renderCard(ev,i,true))}</div>)}
         {profTab === "mine" && (myEvs.length === 0 ? <div className="empty-msg">📝<br/><br/><strong>No submitted events</strong><br/>Tap + to submit your own side event</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{myEvs.map((ev,i) => renderCard(ev,i,false))}</div>)}
 
-        <button className="btn-outline" onClick={() => { setUser(null); toast("Signed out"); }} style={{width:"100%",marginTop:24}}>Sign out</button>
+        <button className="btn-outline" onClick={async () => { if (hasSupabase()) await db.signOut(); setUser(null); toast("Signed out"); }} style={{width:"100%",marginTop:24}}>Sign out</button>
       </div>
     );
   };
