@@ -470,6 +470,15 @@ export default function App() {
   const vipsGoing = (eid) => fGoing(eid).filter(f => vips.includes(f.handle));
   const notableAtEvent = (eid) => FAKE_USERS.filter(u => u.notable && (FAKE_RSVPS[u.handle]||[]).includes(eid) && !friendHandles.includes(u.handle));
   const togVip = (handle) => { setVips(v => v.includes(handle) ? v.filter(h => h !== handle) : [...v, handle]); };
+  const removeFriend = (fr) => {
+    setFriends(f => f.filter(x => x.handle !== fr.handle));
+    setVips(v => v.filter(h => h !== fr.handle));
+    if (user?.supaId && hasSupabase()) {
+      if (fr.friend_id) db.removeFriend(user.supaId, fr.friend_id);
+      if (fr.pending) db.removePendingFriend(user.supaId, fr.handle);
+    }
+    toast("Removed");
+  };
 
   // ── Check quest completions ──
   const checkQuests = useCallback((newCI, newRV) => {
@@ -545,13 +554,28 @@ export default function App() {
     toast(ok ? "Link copied!" : "Copy failed", ok ? "success" : "error");
   };
 
-  const addFriend = (h) => {
+  const addFriend = async (h) => {
     const handle = h.startsWith("@") ? h : `@${h}`;
     if (friendHandles.map(x=>x.toLowerCase()).includes(handle.toLowerCase())) { toast("Already friends", "info"); return; }
-    // Check known users first
+
+    if (user?.supaId && hasSupabase()) {
+      // Supabase: look up profile, or store as pending
+      const result = await db.addFriendByHandle(user.supaId, handle);
+      if (result.found && result.profile) {
+        setFriends(f => [...f, { ...result.profile, is_vip: false, friend_id: result.profile.id, pending: false }]);
+        toast(`Added ${result.profile.name}!`);
+      } else {
+        // Pending — will auto-resolve when they sign up
+        const name = handle.slice(1);
+        setFriends(f => [...f, { handle, name, method: "x", role: "", bio: "", notable: false, tags: [], pending: true }]);
+        toast(`Added ${name} — will link when they join!`, "info");
+      }
+      return;
+    }
+
+    // Fallback: local-only (check known users first)
     const known = FAKE_USERS.find(f => f.handle.toLowerCase() === handle.toLowerCase());
     if (known) { setFriends(f => [...f, known]); toast(`Added ${known.name}!`); return; }
-    // Allow any handle — create a placeholder user
     const name = handle.slice(1);
     setFriends(f => [...f, { handle, name, method: "x", role: "", bio: "", notable: false, tags: [] }]);
     toast(`Added ${name}!`);
@@ -1202,11 +1226,11 @@ export default function App() {
                   <div key={fr.handle} className="friend-row" onClick={() => setFriendView(fr)} style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
                     <Avatar name={fr.name} s={38} bg={uc(fr.handle)} pfp={fr.pfp}/>
                     <div style={{flex:1}}>
-                      <p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>{fr.name}</p>
-                      <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{fr.role || fr.handle} · <span style={{color:"var(--accent)",fontWeight:600}}>{frE.length} events</span></p>
+                      <p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>{fr.name}{fr.pending && <span style={{fontSize:9,marginLeft:6,color:"var(--muted)",background:"var(--surface2)",padding:"2px 7px",borderRadius:100,fontWeight:600,fontFamily:"var(--fm)"}}>pending</span>}</p>
+                      <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{fr.pending ? `${fr.handle} — will link when they join` : `${fr.role || fr.handle} · `}{!fr.pending && <span style={{color:"var(--accent)",fontWeight:600}}>{frE.length} events</span>}</p>
                     </div>
                     <button className="ib-sm" onClick={e => { e.stopPropagation(); togVip(fr.handle); }} style={{color:isVip?"#F9AB00":"var(--muted)",fontSize:14}} title="Must meet">{isVip ? "⭐" : "☆"}</button>
-                    <button className="ib-sm" onClick={e => { e.stopPropagation(); setFriends(f => f.filter(x => x.handle !== fr.handle)); setVips(v => v.filter(h => h !== fr.handle)); toast("Removed"); }} style={{color:"var(--muted)"}}>✕</button>
+                    <button className="ib-sm" onClick={e => { e.stopPropagation(); removeFriend(fr); }} style={{color:"var(--muted)"}}>✕</button>
                   </div>
                 );
               })}
@@ -1361,7 +1385,7 @@ export default function App() {
           <button className="ib" onClick={() => setFriendView(null)}>←</button>
           <div style={{display:"flex",gap:6}}>
             {isFrFriend && <button className="ib" onClick={() => togVip(fr.handle)} style={{color:vips.includes(fr.handle)?"#F9AB00":"var(--muted)",fontSize:16}} title="Must meet">{vips.includes(fr.handle)?"⭐":"☆"}</button>}
-            {isFrFriend ? <button className="ib-sm" onClick={() => { setFriends(f => f.filter(x => x.handle !== fr.handle)); setVips(v => v.filter(h => h !== fr.handle)); setFriendView(null); toast("Removed"); }} style={{color:"#BF360C",fontSize:12}}>Remove</button>
+            {isFrFriend ? <button className="ib-sm" onClick={() => { removeFriend(fr); setFriendView(null); }} style={{color:"#BF360C",fontSize:12}}>Remove</button>
             : <button className="btn-sm" onClick={() => { addFriend(fr.handle); }} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"7px 16px",fontSize:12}}>+ Add</button>}
           </div>
         </div>

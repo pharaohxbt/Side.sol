@@ -151,25 +151,79 @@ export async function toggleBookmark(userId, eventId, isBookmarked) {
 // ════════════════════════════════════════
 export async function fetchFriends(userId) {
   if (!hasSupabase()) return null;
-  const { data, error } = await supabase
+  // Fetch real friends
+  const { data: realFriends, error } = await supabase
     .from("friends")
     .select("friend_id, is_vip, profiles!friends_friend_id_fkey(name, handle, pfp, role, bio, notable, tags)")
     .eq("user_id", userId);
   if (error) { console.error("fetchFriends:", error); return null; }
-  return data.map(f => ({
+  const friends = (realFriends || []).map(f => ({
     ...f.profiles,
     handle: f.profiles.handle,
     is_vip: f.is_vip,
     friend_id: f.friend_id,
+    pending: false,
   }));
+  // Also fetch pending friends (not yet signed up)
+  const { data: pending } = await supabase
+    .from("pending_friends")
+    .select("*")
+    .eq("user_id", userId);
+  if (pending) {
+    pending.forEach(p => {
+      friends.push({
+        name: p.friend_handle.replace(/^@/, ""),
+        handle: p.friend_handle,
+        pfp: "", role: "", bio: "", notable: false, tags: [],
+        is_vip: p.is_vip,
+        friend_id: null,
+        pending: true,
+      });
+    });
+  }
+  return friends;
 }
 
+// Add friend by UUID (real profile exists)
 export async function addFriend(userId, friendId) {
   if (!hasSupabase()) return false;
   const { error } = await supabase
     .from("friends")
     .insert({ user_id: userId, friend_id: friendId });
   if (error) { console.error("addFriend:", error); return false; }
+  return true;
+}
+
+// Add friend by handle — checks if profile exists, otherwise stores as pending
+export async function addFriendByHandle(userId, handle) {
+  if (!hasSupabase()) return { found: false };
+  // Look up the handle in profiles
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, name, handle, pfp, role, bio, notable, tags")
+    .ilike("handle", handle)
+    .limit(1);
+  if (profiles && profiles.length > 0) {
+    // Real profile exists — add as real friend
+    const profile = profiles[0];
+    const { error } = await supabase
+      .from("friends")
+      .insert({ user_id: userId, friend_id: profile.id });
+    if (error && error.code !== "23505") { console.error("addFriendByHandle:", error); return { found: false }; }
+    return { found: true, profile };
+  }
+  // No profile yet — store as pending
+  const { error } = await supabase
+    .from("pending_friends")
+    .insert({ user_id: userId, friend_handle: handle });
+  if (error && error.code !== "23505") { console.error("addPendingFriend:", error); return { found: false }; }
+  return { found: false, pending: true };
+}
+
+// Remove pending friend by handle
+export async function removePendingFriend(userId, handle) {
+  if (!hasSupabase()) return false;
+  await supabase.from("pending_friends").delete().eq("user_id", userId).ilike("friend_handle", handle);
   return true;
 }
 

@@ -201,6 +201,69 @@ create policy "Users can delete own incognito"
   on incognito for delete to authenticated
   using ((select auth.uid()) = user_id);
 
+-- ── PENDING FRIENDS ──
+-- Stores friend requests by handle for users who haven't signed up yet
+create table pending_friends (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references profiles(id) on delete cascade,
+  friend_handle text not null,
+  is_vip boolean default false,
+  created_at timestamptz default now(),
+  unique(user_id, friend_handle)
+);
+
+create index pending_friends_handle_idx on pending_friends (friend_handle);
+create index pending_friends_user_id_idx on pending_friends (user_id);
+
+alter table pending_friends enable row level security;
+
+create policy "Users can view own pending friends"
+  on pending_friends for select to authenticated
+  using ((select auth.uid()) = user_id);
+
+create policy "Users can manage own pending friends"
+  on pending_friends for insert to authenticated
+  with check ((select auth.uid()) = user_id);
+
+create policy "Users can delete own pending friends"
+  on pending_friends for delete to authenticated
+  using ((select auth.uid()) = user_id);
+
+-- ── AUTO-RESOLVE: When a new profile is created, convert pending friends ──
+create or replace function resolve_pending_friends()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  -- Find all pending_friends entries that match this new profile's handle
+  -- and convert them to real friend connections
+  insert into public.friends (user_id, friend_id, is_vip)
+  select pf.user_id, new.id, pf.is_vip
+  from public.pending_friends pf
+  where lower(pf.friend_handle) = lower(new.handle)
+  on conflict (user_id, friend_id) do nothing;
+
+  -- Clean up resolved pending entries
+  delete from public.pending_friends
+  where lower(friend_handle) = lower(new.handle);
+
+  return new;
+end;
+$$;
+
+create trigger on_profile_created_resolve_friends
+  after insert on profiles
+  for each row execute function resolve_pending_friends();
+
+-- Also resolve on profile update (in case handle is set after initial creation)
+create trigger on_profile_updated_resolve_friends
+  after update of handle on profiles
+  for each row
+  when (old.handle is distinct from new.handle and new.handle is not null)
+  execute function resolve_pending_friends();
+
 -- ── ACTIVITY FEED ──
 -- Stores real user activity for the Pulse view
 create table activity (
