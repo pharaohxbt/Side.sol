@@ -943,9 +943,7 @@ export default function App() {
 
           {/* RSVP Attendee List (host only) */}
           {mine && (() => {
-            const realRsvp = user && rsvps.includes(ev.id) ? [user] : [];
-            const friendsRsvpd = friends.filter(f => friendRsvpMap[f.handle]?.rsvps?.includes(ev.id));
-            const allRsvp = [...realRsvp, ...friendsRsvpd];
+            const allRsvp = eventAttendees.length > 0 ? eventAttendees : (rsvps.includes(ev.id) ? [user] : []);
             return allRsvp.length > 0 ? (
               <div style={{marginTop:16,animation:"fadeUp .4s .5s both"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -1424,6 +1422,32 @@ export default function App() {
 
   // ── Friend Profile ──
   const [friendProfileData, setFriendProfileData] = useState(null);
+  const [eventAttendees, setEventAttendees] = useState([]);
+
+  // Fetch all attendees for selected event (when host views it)
+  useEffect(() => {
+    if (!sel || !hasSupabase()) { setEventAttendees([]); return; }
+    (async () => {
+      try {
+        const supaUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        let token = supaKey;
+        try {
+          const storageKey = `sb-${new URL(supaUrl).hostname.split('.')[0]}-auth-token`;
+          const stored = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          if (stored?.access_token) token = stored.access_token;
+        } catch(e) {}
+        const eid = sel.id;
+        const res = await fetch(`${supaUrl}/rest/v1/profiles?rsvps_data=cs.[${eid}]&select=name,handle,pfp,role`, {
+          headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          setEventAttendees(rows || []);
+        }
+      } catch(e) { setEventAttendees([]); }
+    })();
+  }, [sel]);
   const [friendRsvpMap, setFriendRsvpMap] = useState({});
   // Fetch all friends' RSVP data in bulk
   useEffect(() => {
