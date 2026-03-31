@@ -280,7 +280,7 @@ export default function App() {
         if (stored?.access_token) token = stored.access_token;
       } catch(e) {}
 
-      const res = await fetch(`${supaUrl}/rest/v1/profiles?id=eq.${uid}&select=friends_data,vips_data,bmarks_data,rsvps_data,checkins_data,incog_data`, {
+      const res = await fetch(`${supaUrl}/rest/v1/profiles?id=eq.${uid}&select=friends_data,vips_data,bmarks_data,rsvps_data,checkins_data,incog_data,pending_requests_data,approved_users_data`, {
         headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
       });
       if (!res.ok) return;
@@ -293,6 +293,9 @@ export default function App() {
       if (data.rsvps_data?.length) setRsvps(data.rsvps_data);
       if (data.checkins_data?.length) setCheckins(data.checkins_data);
       if (data.incog_data?.length) setIncog(data.incog_data);
+      // Always set pending requests from Supabase (host may have approved/denied)
+      setPendingRequests(data.pending_requests_data || []);
+      setApprovedUsers(data.approved_users_data || {});
     } catch(e) {}
   }, []);
 
