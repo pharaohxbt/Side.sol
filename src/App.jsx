@@ -879,8 +879,8 @@ export default function App() {
               )}
               {user && !going && !ev.rsvp && <button className="qrsvp" onClick={e => { e.stopPropagation(); togRsvp(ev.id); }}>Join</button>}
               {user && !going && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="qrsvp" onClick={e => { e.stopPropagation(); setPendingRequests(p => [...p, ev.id]); toast("Request sent!", "info"); }}>Request</button>}
-              {user && !going && ev.rsvp && pendingRequests.includes(ev.id) && <button className="qrsvp on" onClick={e => { e.stopPropagation(); }}>⏳</button>}
-              {user && going && !verified && <button className="qrsvp on" onClick={e => { e.stopPropagation(); }}>✓</button>}
+              {user && !going && ev.rsvp && pendingRequests.includes(ev.id) && <button className="qrsvp on" style={{fontSize:9,padding:"4px 10px"}} onClick={e => { e.stopPropagation(); }}>Requested</button>}
+              {user && going && !verified && <button className="qrsvp on" style={{fontSize:9,padding:"4px 10px"}} onClick={e => { e.stopPropagation(); }}>Going</button>}
               <span className="card-att">👥 {ev.att}</span>
             </div>
           </div>
@@ -1061,7 +1061,7 @@ export default function App() {
             <div style={{display:"flex",gap:8}}>
               {!going && !ev.rsvp && <button className="btn-glow" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Join</button>}
               {!going && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => { setPendingRequests(p => [...p, ev.id]); toast("Request sent! The host will review it.", "info"); }}>🔒 Request</button>}
-              {!going && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>⏳ Pending Approval</button>}
+              {!going && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>Requested — Awaiting Approval</button>}
               {going && !verified && <button className="btn-outline" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Leave</button>}
               {ev.luma && <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{flex:1,textDecoration:"none",textAlign:"center"}}>Luma ↗</a>}
             </div>
