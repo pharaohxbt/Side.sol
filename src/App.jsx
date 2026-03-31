@@ -563,7 +563,11 @@ export default function App() {
   const grouped = {};
   sortedEvs.forEach(e => { (grouped[e.date] = grouped[e.date] || []).push(e); });
   const friendHandles = friends.map(f => f.handle);
-  const fGoing = (eid) => friends.filter(f => (FAKE_RSVPS[f.handle] || []).includes(eid));
+  const fGoing = (eid) => friends.filter(f => {
+    const realData = friendRsvpMap[f.handle];
+    const rsvpList = realData?.rsvps?.length ? realData.rsvps : (FAKE_RSVPS[f.handle] || []);
+    return rsvpList.includes(eid);
+  });
   const vipsGoing = (eid) => fGoing(eid).filter(f => vips.includes(f.handle));
   const notableAtEvent = (eid) => FAKE_USERS.filter(u => u.notable && (FAKE_RSVPS[u.handle]||[]).includes(eid) && !friendHandles.includes(u.handle));
   const togVip = (handle) => { setVips(v => v.includes(handle) ? v.filter(h => h !== handle) : [...v, handle]); };
@@ -1262,7 +1266,9 @@ export default function App() {
 
     // VIP friends with their next event
     const vipFriends = friends.filter(f => vips.includes(f.handle)).map(f => {
-      const theirEvs = (FAKE_RSVPS[f.handle]||[]).map(eid => events.find(e => e.id === eid && e.conf === conf)).filter(Boolean).sort((a,b) => a.date.localeCompare(b.date));
+      const realData = friendRsvpMap[f.handle];
+      const rsvpList = realData?.rsvps?.length ? realData.rsvps : (FAKE_RSVPS[f.handle]||[]);
+      const theirEvs = rsvpList.map(eid => events.find(e => e.id === eid && e.conf === conf)).filter(Boolean).sort((a,b) => a.date.localeCompare(b.date));
       return {...f, nextEv: theirEvs[0] || null, evCount: theirEvs.length};
     });
 
@@ -1325,7 +1331,9 @@ export default function App() {
             <p className="section-label">Your friends · {friends.length}</p>
             <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
               {friends.map((fr,i) => {
-                const frE = events.filter(e => (FAKE_RSVPS[fr.handle]||[]).includes(e.id));
+                const realData = friendRsvpMap[fr.handle];
+                const frRsvpList = realData?.rsvps?.length ? realData.rsvps : (FAKE_RSVPS[fr.handle]||[]);
+                const frE = events.filter(e => frRsvpList.includes(e.id));
                 const isVip = vips.includes(fr.handle);
                 return (
                   <div key={fr.handle} className="friend-row" onClick={() => setFriendView(fr)} style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
@@ -1473,6 +1481,35 @@ export default function App() {
 
   // ── Friend Profile ──
   const [friendProfileData, setFriendProfileData] = useState(null);
+  const [friendRsvpMap, setFriendRsvpMap] = useState({});
+  // Fetch all friends' RSVP data in bulk
+  useEffect(() => {
+    if (!hasSupabase() || friends.length === 0) return;
+    const realFriends = friends.filter(f => !FAKE_RSVPS[f.handle]);
+    if (realFriends.length === 0) return;
+    (async () => {
+      try {
+        const supaUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        let token = supaKey;
+        try {
+          const storageKey = `sb-${new URL(supaUrl).hostname.split('.')[0]}-auth-token`;
+          const stored = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          if (stored?.access_token) token = stored.access_token;
+        } catch(e) {}
+        const handles = realFriends.map(f => encodeURIComponent(f.handle)).join(",");
+        const res = await fetch(`${supaUrl}/rest/v1/profiles?handle=in.(${handles})&select=handle,rsvps_data,checkins_data`, {
+          headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const rows = await res.json();
+          const map = {};
+          rows.forEach(r => { map[r.handle] = { rsvps: r.rsvps_data || [], checkins: r.checkins_data || [] }; });
+          setFriendRsvpMap(prev => ({ ...prev, ...map }));
+        }
+      } catch(e) { console.error("Friend RSVP fetch:", e); }
+    })();
+  }, [friends]);
   useEffect(() => {
     if (!friendView || !hasSupabase()) { setFriendProfileData(null); return; }
     // Fetch friend's profile data (rsvps, checkins, etc.) from Supabase
