@@ -461,7 +461,7 @@ export default function App() {
   useEffect(() => { if (ready) saveState("approvedUsers", approvedUsers); }, [approvedUsers, ready]);
   useEffect(() => { if (ready) saveState("vips", vips); }, [vips, ready]);
   useEffect(() => { if (ready) saveState("privacy", privacy); }, [privacy, ready]);
-  useEffect(() => { if (ready) { saveState("dark", dark); document.documentElement.style.background = dark ? "#0c0c14" : "#F5F3EE"; } }, [dark, ready]);
+  useEffect(() => { if (ready) { saveState("dark", dark); const bg = dark ? "#0c0c14" : "#F5F3EE"; document.documentElement.style.background = bg; document.body.style.background = bg; } }, [dark, ready]);
 
   // ── Sync user data to Supabase ──
   const syncTimer = useRef(null);
