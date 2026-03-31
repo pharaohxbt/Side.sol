@@ -1245,7 +1245,6 @@ export default function App() {
 
   const renderPulse = () => {
     const trending = [...cevs].sort((a,b) => (b.att||0) - (a.att||0)).slice(0,5);
-    // Build activity feed from all users
     const allActivity = globalActivity.filter(a => events.find(e => e.id === a.e));
     return (
       <div className="anim-in">
@@ -1260,40 +1259,54 @@ export default function App() {
           <div className="stat-box"><p className="stat-num">{completedQuests.length}</p><p className="stat-label">Quests</p></div>
         </div>}
 
-        <p className="section-label" style={{marginTop:16}}>Trending Now</p>
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          {trending.map((ev,i) => {
-            const cat = CATS[ev.cat] || CATS.Other;
-            const fg = fGoing(ev.id);
-            return (
-              <div key={ev.id} className="ev-card" style={{background:cbg(cat),borderLeft:`4px solid ${cat.ac}`,cursor:"pointer",animation:`cardIn .5s cubic-bezier(.16,1,.3,1) ${i*0.08}s both`}} onClick={() => setSel(ev)}>
-                <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <span className="trend-num">#{i+1}</span>
-                  <div style={{flex:1,minWidth:0}}>
-                    <h4 className="card-t-sm">{ev.title}</h4>
-                    <span className="card-m">{fd(ev.date)} · {ev.host}</span>
-                    {fg.length > 0 && <span style={{fontSize:10,color:"var(--accent)",fontWeight:600,display:"block",marginTop:2}}>👥 {fg.map(f=>f.name.split(" ")[0]).join(", ")} going</span>}
+        {/* Activity Feed + Trending side by side on desktop, stacked on mobile */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:20,marginTop:16}}>
+          {/* Activity Feed — primary content */}
+          <div>
+            <p className="section-label">Activity Feed</p>
+            {allActivity.length === 0 ? (
+              <div className="empty-msg" style={{padding:"32px 20px"}}>⚡<br/><br/><strong>No activity yet</strong><br/>Join events and add friends to see what's happening</div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {allActivity.slice(0,15).map((p,i) => (
+                  <div key={i} className="act-row" style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
+                    <Avatar name={p.u} s={30} bg={uc(p.u)} pfp={p.pfp}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{fontSize:13,lineHeight:1.4}}><strong style={{fontFamily:"var(--fd)"}}>{p.u}</strong> {p.a} <em style={{color:"var(--accent)",fontStyle:"normal",fontWeight:700}}>{p.e ? events.find(e=>e.id===p.e)?.title : p.q}</em></p>
+                      <span style={{fontSize:10,color:"var(--muted)",fontFamily:"var(--fm)"}}>{timeAgo(p.ts)} {timeAgo(p.ts) && timeAgo(p.ts) !== "just now" ? "ago" : ""}</span>
+                    </div>
                   </div>
-                  <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end"}}>
-                    <span style={{fontSize:18,fontWeight:800,fontFamily:"var(--fm)",color:"var(--heading)"}}>{ev.att}</span>
-                    <span style={{fontSize:9,color:"var(--muted)",fontFamily:"var(--fm)"}}>going</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Trending — secondary, sidebar on desktop */}
+          {trending.length > 0 && <div>
+            <p className="section-label">Trending</p>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {trending.map((ev,i) => {
+                const cat = CATS[ev.cat] || CATS.Other;
+                const fg = fGoing(ev.id);
+                return (
+                  <div key={ev.id} className="ev-card" style={{background:cbg(cat),borderLeft:`4px solid ${cat.ac}`,cursor:"pointer",padding:"14px 16px",animation:`cardIn .5s cubic-bezier(.16,1,.3,1) ${i*0.08}s both`}} onClick={() => setSel(ev)}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span className="trend-num" style={{fontSize:18}}>#{i+1}</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <h4 style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)",letterSpacing:"-.1px",color:"var(--heading)"}}>{ev.title}</h4>
+                        <span className="card-m">{fd(ev.date)} · {ev.host}</span>
+                        {fg.length > 0 && <span style={{fontSize:10,color:"var(--accent)",fontWeight:600,display:"block",marginTop:2}}>👥 {fg.map(f=>f.name.split(" ")[0]).join(", ")}</span>}
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <span style={{fontSize:16,fontWeight:800,fontFamily:"var(--fm)",color:"var(--heading)"}}>{ev.att}</span>
+                        <span style={{fontSize:8,color:"var(--muted)",fontFamily:"var(--fm)",display:"block"}}>going</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <p className="section-label" style={{marginTop:24}}>Activity Feed</p>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {allActivity.map((p,i) => (
-            <div key={i} className="act-row" style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
-              <Avatar name={p.u} s={30} bg={uc(p.u)} pfp={p.pfp}/>
-              <div style={{flex:1,minWidth:0}}>
-                <p style={{fontSize:13,lineHeight:1.4}}><strong style={{fontFamily:"var(--fd)"}}>{p.u}</strong> {p.a} <em style={{color:"var(--accent)",fontStyle:"normal",fontWeight:700}}>{p.e ? events.find(e=>e.id===p.e)?.title : p.q}</em></p>
-                <span style={{fontSize:10,color:"var(--muted)",fontFamily:"var(--fm)"}}>{timeAgo(p.ts)} {timeAgo(p.ts) && timeAgo(p.ts) !== "just now" ? "ago" : ""}</span>
-              </div>
+                );
+              })}
             </div>
-          ))}
+          </div>}
         </div>
       </div>
     );
