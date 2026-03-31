@@ -877,8 +877,8 @@ export default function App() {
                   <span style={{fontSize:10.5,fontWeight:600,color:"var(--accent)"}}>{fg.length <= 2 ? fg.map(f=>f.name.split(" ")[0]).join(" & ") : `${fg.length} friends`}</span>
                 </div>
               )}
-              {user && !going && !ev.rsvp && <button className="qrsvp" onClick={e => { e.stopPropagation(); togRsvp(ev.id); }}>RSVP</button>}
-              {user && !going && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="qrsvp" onClick={e => { e.stopPropagation(); setPendingRequests(p => [...p, ev.id]); toast("Request sent!", "info"); }}>🔒</button>}
+              {user && !going && !ev.rsvp && <button className="qrsvp" onClick={e => { e.stopPropagation(); togRsvp(ev.id); }}>Join</button>}
+              {user && !going && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="qrsvp" onClick={e => { e.stopPropagation(); setPendingRequests(p => [...p, ev.id]); toast("Request sent!", "info"); }}>Request</button>}
               {user && !going && ev.rsvp && pendingRequests.includes(ev.id) && <button className="qrsvp on" onClick={e => { e.stopPropagation(); }}>⏳</button>}
               {user && going && !verified && <button className="qrsvp on" onClick={e => { e.stopPropagation(); }}>✓</button>}
               <span className="card-att">👥 {ev.att}</span>
@@ -1059,10 +1059,10 @@ export default function App() {
               <div className="verified-banner" style={{animation:"pulseRing 1.5s ease"}}>✓ Attendance Verified — XP Earned</div>
             )}
             <div style={{display:"flex",gap:8}}>
-              {!going && !ev.rsvp && <button className="btn-glow" style={{flex:1}} onClick={() => togRsvp(ev.id)}>RSVP</button>}
-              {!going && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => { setPendingRequests(p => [...p, ev.id]); toast("Request sent! The host will review it.", "info"); }}>🔒 Request to Join</button>}
+              {!going && !ev.rsvp && <button className="btn-glow" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Join</button>}
+              {!going && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => { setPendingRequests(p => [...p, ev.id]); toast("Request sent! The host will review it.", "info"); }}>🔒 Request</button>}
               {!going && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>⏳ Pending Approval</button>}
-              {going && !verified && <button className="btn-outline" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Cancel RSVP</button>}
+              {going && !verified && <button className="btn-outline" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Leave</button>}
               {ev.luma && <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{flex:1,textDecoration:"none",textAlign:"center"}}>Luma ↗</a>}
             </div>
             {mine && <button className="btn-sm" style={{width:"100%",padding:"12px",borderRadius:14,fontSize:13}} onClick={() => { setSel(null); setShowHostCode(ev); }}>🔑 Host Dashboard — Show Check-in Code</button>}
@@ -1347,7 +1347,7 @@ export default function App() {
                       <p style={{fontSize:12,color:"var(--muted)"}}>{req.handle} added you{alreadyFriend ? " back" : ""}</p>
                     </div>
                     {alreadyFriend ? (
-                      <button className="btn-sm" style={{background:"rgba(20,241,149,.1)",color:"#0A8F5A",border:"1px solid rgba(20,241,149,.2)",padding:"6px 14px",fontSize:11}} onClick={() => { clearRequest(); toast(`You and ${req.name} are now mutual friends!`); }}>👥 Mutual</button>
+                      <button className="btn-sm" style={{background:"rgba(20,241,149,.1)",color:"#0A8F5A",border:"1px solid rgba(20,241,149,.2)",padding:"6px 14px",fontSize:11}} onClick={() => { clearRequest(); toast(`You and ${req.name} are now mutual friends!`); }}>✓ Confirm</button>
                     ) : (<>
                       <button className="btn-sm" style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"6px 14px",fontSize:11}} onClick={() => { addFriend(req.handle); clearRequest(); }}>+ Add Back</button>
                       <button className="ib-sm" style={{color:"var(--muted)"}} onClick={() => { clearRequest(); toast("Dismissed"); }}>✕</button>
@@ -1473,7 +1473,7 @@ export default function App() {
                       <h4 className="card-t-sm">{ev.title}</h4>
                       <span className="card-m">{fd(ev.date)} · {ev.time}</span>
                     </div>
-                    {!isGoing && user && <button className="qrsvp" onClick={e => { e.stopPropagation(); togRsvp(ev.id); }} style={{alignSelf:"center"}}>RSVP</button>}
+                    {!isGoing && user && <button className="qrsvp" onClick={e => { e.stopPropagation(); togRsvp(ev.id); }} style={{alignSelf:"center"}}>Join</button>}
                   </div>
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",paddingLeft:8}}>
