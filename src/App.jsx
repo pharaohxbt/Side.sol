@@ -1666,7 +1666,7 @@ export default function App() {
                     <h2 style={{fontSize:18,fontWeight:800,color:"white"}}>{fr.name}</h2>
                     {fr.notable && <span style={{fontSize:9,background:"rgba(249,171,0,.15)",color:"#F9AB00",padding:"2px 7px",borderRadius:100,fontWeight:700}}>Notable</span>}
                   </div>
-                  <p style={{fontSize:12,color:"rgba(255,255,255,.6)",display:"flex",alignItems:"center",gap:3}}>{fr.method==="x"&&<XI s={10}/>}{fr.handle}</p>
+                  <p style={{fontSize:12,color:"rgba(255,255,255,.6)",display:"flex",alignItems:"center",gap:3}}>{fr.handle}{fr.handle?.startsWith("@") && <a href={`https://x.com/${fr.handle.slice(1)}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:8,background:"rgba(255,255,255,.1)",marginLeft:4,color:"rgba(255,255,255,.7)",transition:"all .2s",textDecoration:"none"}}><XI s={11}/></a>}</p>
                   {fr.role && <p style={{fontSize:11,color:"rgba(255,255,255,.45)",marginTop:3}}>{fr.role}</p>}
                   {fr.bio && <p style={{fontSize:11,color:"rgba(255,255,255,.35)",marginTop:2,fontStyle:"italic"}}>{fr.bio}</p>}
                   <div style={{display:"flex",gap:5,marginTop:6}}><span className="prof-stat">{frLevel.n}</span><span className="prof-stat">{frXP} XP</span></div>
@@ -1743,7 +1743,7 @@ export default function App() {
               <Avatar name={user.name} s={54} pfp={user.pfp}/>
               <div style={{flex:1}}>
                 <h2 style={{fontSize:20,fontWeight:800,color:"white",fontFamily:"var(--fd)",letterSpacing:"-.3px"}}>{user.name}</h2>
-                <p style={{fontSize:12.5,color:"rgba(255,255,255,.55)",display:"flex",alignItems:"center",gap:4,marginTop:2}}>{user.method==="x"&&<XI s={11}/>}{user.handle}</p>
+                <p style={{fontSize:12.5,color:"rgba(255,255,255,.55)",display:"flex",alignItems:"center",gap:4,marginTop:2}}>{user.handle}{user.handle?.startsWith("@") && <a href={`https://x.com/${user.handle.slice(1)}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:8,background:"rgba(255,255,255,.1)",color:"rgba(255,255,255,.7)",textDecoration:"none"}}><XI s={11}/></a>}</p>
                 <div style={{display:"flex",gap:6,marginTop:7}}>
                   <span className="prof-stat">{level.n}</span>
                   <span className="prof-stat">{totalXP} XP</span>
