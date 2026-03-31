@@ -381,6 +381,12 @@ export default function App() {
               }),
             });
             saveState("v1_reset_done", true);
+            // Resolve pending friends — update anyone who added this user before they signed up
+            fetch(`${supaUrl}/rest/v1/rpc/resolve_pending_friends_json`, {
+              method:"POST",
+              headers:{"Content-Type":"application/json","apikey":supaKey,"Authorization":`Bearer ${token}`},
+              body:JSON.stringify({new_handle:fallbackUser.handle,new_name:fallbackUser.name,new_pfp:fallbackUser.pfp||""})
+            }).catch(()=>{});
           } catch(e) {}
           try { await loadUserData(u.id); } catch(e) {}
           initialLoadDone.current = true;
