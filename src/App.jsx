@@ -311,8 +311,12 @@ export default function App() {
     try {
       const supaUrl = import.meta.env.VITE_SUPABASE_URL;
       const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
-      const token = session?.access_token || supaKey;
+      let token = supaKey;
+      try {
+        const storageKey = `sb-${new URL(supaUrl).hostname.split('.')[0]}-auth-token`;
+        const stored = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        if (stored?.access_token) token = stored.access_token;
+      } catch(e) {}
 
       const res = await fetch(`${supaUrl}/rest/v1/profiles?id=eq.${uid}&select=friends_data,vips_data,bmarks_data,rsvps_data,checkins_data,incog_data`, {
         headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
@@ -461,11 +465,16 @@ export default function App() {
     syncTimer.current = setTimeout(async () => {
       console.log("[sync] saving, uid:", uid, "friends:", friends.length);
       try {
-        // Use raw fetch to bypass any Supabase client issues
         const supaUrl = import.meta.env.VITE_SUPABASE_URL;
         const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
-        const token = session?.access_token || supaKey;
+        // Get token from localStorage directly (avoid getSession which hangs)
+        let token = supaKey;
+        try {
+          const storageKey = `sb-${new URL(supaUrl).hostname.split('.')[0]}-auth-token`;
+          const stored = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          if (stored?.access_token) token = stored.access_token;
+        } catch(e) {}
+        console.log("[sync] using token:", token === supaKey ? "anon-key" : "auth-token");
 
         const res = await fetch(`${supaUrl}/rest/v1/profiles?id=eq.${uid}`, {
           method: "PATCH",
