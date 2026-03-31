@@ -1436,6 +1436,10 @@ export default function App() {
         const res = await fetch(`${supaUrl}/rest/v1/profiles?select=name,handle,pfp,rsvps_data,checkins_data,created_at&or=(rsvps_data.neq.[],checkins_data.neq.[])`, {
           headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
         });
+        // Also fetch events with creators for "created an event" activity
+        const evRes = await fetch(`${supaUrl}/rest/v1/events?select=id,title,created_at,created_by,profiles(name,handle,pfp)&created_by=not.is.null&order=created_at.desc&limit=50`, {
+          headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
+        });
         if (res.ok) {
           const profiles = await res.json();
           const feed = [];
@@ -1444,6 +1448,15 @@ export default function App() {
             (p.rsvps_data || []).forEach(eid => feed.push({ u: p.name, a: "RSVP'd to", e: eid, pfp: p.pfp, handle: p.handle, ts }));
             (p.checkins_data || []).forEach(eid => feed.push({ u: p.name, a: "checked in at", e: eid, pfp: p.pfp, handle: p.handle, ts }));
           });
+          if (evRes.ok) {
+            const evRows = await evRes.json();
+            evRows.forEach(ev => {
+              if (ev.profiles) {
+                feed.push({ u: ev.profiles.name, a: "created", e: ev.id, pfp: ev.profiles.pfp, handle: ev.profiles.handle, ts: ev.created_at });
+              }
+            });
+          }
+          feed.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
           setGlobalActivity(feed);
         }
       } catch(e) {}
