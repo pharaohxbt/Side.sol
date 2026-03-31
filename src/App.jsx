@@ -6,8 +6,8 @@ import { supabase, hasSupabase } from "./lib/supabase.js";
 // ════════════════════════════════════════
 // AUTH0
 // ════════════════════════════════════════
-const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN || "dev-f83qlgf03joylvmx.us.auth0.com";
-const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID || "ynxdDhHRTNRj99M1DJVpFYcMWtmSvr9g";
+const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN || "";
+const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID || "";
 let _auth0 = null;
 async function getAuth0() {
   if (_auth0) return _auth0;
@@ -321,18 +321,17 @@ export default function App() {
       const res = await fetch(`${supaUrl}/rest/v1/profiles?id=eq.${uid}&select=friends_data,vips_data,bmarks_data,rsvps_data,checkins_data,incog_data`, {
         headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
       });
-      if (!res.ok) { console.error("[load] FAILED:", res.status); return; }
+      if (!res.ok) return;
       const rows = await res.json();
       const data = rows?.[0];
-      if (!data) { console.log("[load] no profile data yet"); return; }
-      console.log("[load] loaded from Supabase, friends:", data.friends_data?.length || 0);
+      if (!data) return;
       if (data.friends_data?.length) setFriends(data.friends_data);
       if (data.vips_data?.length) setVips(data.vips_data);
       if (data.bmarks_data?.length) setBmarks(data.bmarks_data);
       if (data.rsvps_data?.length) setRsvps(data.rsvps_data);
       if (data.checkins_data?.length) setCheckins(data.checkins_data);
       if (data.incog_data?.length) setIncog(data.incog_data);
-    } catch(e) { console.error("loadUserData error:", e); }
+    } catch(e) {}
   }, []);
 
   useEffect(() => {
@@ -404,12 +403,9 @@ export default function App() {
                 pfp: fallbackUser.pfp, method: fallbackUser.method,
               }),
             });
-            console.log("[auth] profile upserted");
-          } catch(e) { console.error("[auth] profile upsert error:", e); }
-          // Load user data
-          try { console.log("[auth] loading user data"); await loadUserData(u.id); } catch(e) { console.error("[auth] load error:", e); }
+          } catch(e) {}
+          try { await loadUserData(u.id); } catch(e) {}
           initialLoadDone.current = true;
-          console.log("[auth] initial load done, sync enabled");
           // Clean up OAuth hash from URL
           if (window.location.hash.includes("access_token")) {
             window.history.replaceState(null, "", window.location.pathname);
@@ -445,7 +441,7 @@ export default function App() {
               }
             }
           }
-        } catch(e) { console.error("Auth0 callback error", e); }
+        } catch(e) {}
       })();
     }
     // Deep link: open event from URL hash
@@ -462,11 +458,7 @@ export default function App() {
   const initialLoadDone = useRef(false);
   useEffect(() => {
     if (!user?.supaId || !hasSupabase()) return;
-    console.log("[auto-load] user detected, loading data for:", user.supaId);
-    loadUserData(user.supaId).then(() => {
-      initialLoadDone.current = true;
-      console.log("[auto-load] done, sync enabled");
-    });
+    loadUserData(user.supaId).then(() => { initialLoadDone.current = true; });
   }, [user?.supaId]);
 
   // ── Save to localStorage on changes ──
@@ -496,18 +488,15 @@ export default function App() {
     if (!initialLoadDone.current) return;
     clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(async () => {
-      console.log("[sync] saving, uid:", uid, "friends:", friends.length);
       try {
         const supaUrl = import.meta.env.VITE_SUPABASE_URL;
         const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        // Get token from localStorage directly (avoid getSession which hangs)
         let token = supaKey;
         try {
           const storageKey = `sb-${new URL(supaUrl).hostname.split('.')[0]}-auth-token`;
           const stored = JSON.parse(localStorage.getItem(storageKey) || "{}");
           if (stored?.access_token) token = stored.access_token;
         } catch(e) {}
-        console.log("[sync] using token:", token === supaKey ? "anon-key" : "auth-token");
 
         const res = await fetch(`${supaUrl}/rest/v1/profiles?id=eq.${uid}`, {
           method: "PATCH",
@@ -522,8 +511,7 @@ export default function App() {
             rsvps_data: rsvps, checkins_data: checkins, incog_data: incog,
           }),
         });
-        console.log("[sync]", res.ok ? "SUCCESS" : `FAILED: ${res.status} ${await res.text()}`);
-      } catch(e) { console.error("[sync] EXCEPTION:", e); }
+      } catch(e) {}
     }, 500);
   }, [friends, vips, bmarks, rsvps, checkins, incog, ready, user]);
 
@@ -657,7 +645,6 @@ export default function App() {
 
   const addFriend = (h) => {
     const handle = h.startsWith("@") ? h : `@${h}`;
-    console.log("[addFriend]", handle, "existing:", friendHandles);
     if (friendHandles.map(x=>x.toLowerCase()).includes(handle.toLowerCase())) { toast("Already friends", "info"); return; }
 
     // Check known demo users first
@@ -671,7 +658,6 @@ export default function App() {
 
     // Add to local state immediately as pending (instant UI feedback)
     const name = handle.slice(1);
-    console.log("[addFriend] adding pending:", handle);
     setFriends(f => [...f, { handle, name, method: "x", role: "", bio: "", notable: false, tags: [], pending: true }]);
     toast(`Added ${name} — will link when they join!`, "info");
 
@@ -686,7 +672,7 @@ export default function App() {
           ));
           toast(`${result.profile.name} is on SIDE.SOL!`);
         }
-      }).catch(e => console.error("addFriendByHandle error:", e));
+      }).catch(() => {});
     }
   };
 
@@ -1507,7 +1493,7 @@ export default function App() {
           rows.forEach(r => { map[r.handle] = { rsvps: r.rsvps_data || [], checkins: r.checkins_data || [] }; });
           setFriendRsvpMap(prev => ({ ...prev, ...map }));
         }
-      } catch(e) { console.error("Friend RSVP fetch:", e); }
+      } catch(e) {}
     })();
   }, [friends]);
   useEffect(() => {
@@ -1532,7 +1518,7 @@ export default function App() {
           const rows = await res.json();
           if (rows?.[0]) { setFriendProfileData(rows[0]); return; }
         }
-      } catch(e) { console.error("Friend profile fetch:", e); }
+      } catch(e) {}
       setFriendProfileData(null);
     })();
   }, [friendView]);
