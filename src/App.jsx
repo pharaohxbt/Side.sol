@@ -458,6 +458,17 @@ export default function App() {
     }
   }, []);
 
+  // ── Load user data from Supabase when user is set (independent of auth callback) ──
+  const initialLoadDone = useRef(false);
+  useEffect(() => {
+    if (!user?.supaId || !hasSupabase()) return;
+    console.log("[auto-load] user detected, loading data for:", user.supaId);
+    loadUserData(user.supaId).then(() => {
+      initialLoadDone.current = true;
+      console.log("[auto-load] done, sync enabled");
+    });
+  }, [user?.supaId]);
+
   // ── Save to localStorage on changes ──
   useEffect(() => {
     if (sel) { window.history.replaceState(null, "", `#event=${sel.id}`); }
@@ -476,7 +487,7 @@ export default function App() {
 
   // ── Sync user data to Supabase ──
   const syncTimer = useRef(null);
-  const initialLoadDone = useRef(false);
+  // (moved up)
   useEffect(() => {
     if (!ready || !hasSupabase()) return;
     const uid = user?.supaId;
