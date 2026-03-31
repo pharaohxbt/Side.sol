@@ -98,6 +98,7 @@ const fd = (d) => d ? new Date(d+"T12:00:00").toLocaleDateString("en-US",{weekda
 const dl = (d) => d ? new Date(d+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"}) : "";
 const gid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 const ACOLORS = ["#9945FF","#14F195","#F9AB00","#4285F4","#EC407A","#FF7043","#26A69A","#AB47BC"];
+const timeAgo = (ts) => { if (!ts) return ""; const s = Math.floor((Date.now() - new Date(ts).getTime()) / 1000); if (s < 60) return "just now"; if (s < 3600) return `${Math.floor(s/60)}m`; if (s < 86400) return `${Math.floor(s/3600)}h`; return `${Math.floor(s/86400)}d`; };
 const uc = (h) => { let n=0; for(let i=0;i<(h||"").length;i++) n+=h.charCodeAt(i); return ACOLORS[n%ACOLORS.length]; };
 
 const Avatar = ({name,s=32,bg,pfp}) => (
@@ -181,7 +182,7 @@ function PulseTicker({ activity, events }) {
       <div style={{flex:1,overflow:"hidden"}}>
         {activity.map((p,i) => (
           <div key={i} style={{display:i===ci?"flex":"none",animation:i===ci?"fadeSlide .4s ease":"none",alignItems:"center",gap:3,fontSize:12,whiteSpace:"nowrap"}}>
-            <strong>{p.u}</strong>&nbsp;{p.a}&nbsp;<em style={{color:"#14F195"}}>{p.e ? events.find(e=>e.id===p.e)?.title : p.q}</em>&nbsp;<span className="pulse-time">{p.t}</span>
+            <strong>{p.u}</strong>&nbsp;{p.a}&nbsp;<em style={{color:"#14F195"}}>{p.e ? events.find(e=>e.id===p.e)?.title : p.q}</em>&nbsp;<span className="pulse-time">{timeAgo(p.ts)}{timeAgo(p.ts) && timeAgo(p.ts) !== "just now" ? " ago" : ""}</span>
           </div>
         ))}
       </div>
@@ -1177,7 +1178,7 @@ export default function App() {
               <Avatar name={p.u} s={30} bg={uc(p.u)} pfp={p.pfp}/>
               <div style={{flex:1,minWidth:0}}>
                 <p style={{fontSize:13,lineHeight:1.4}}><strong style={{fontFamily:"var(--fd)"}}>{p.u}</strong> {p.a} <em style={{color:"var(--accent)",fontStyle:"normal",fontWeight:700}}>{p.e ? events.find(e=>e.id===p.e)?.title : p.q}</em></p>
-                <span style={{fontSize:10,color:"var(--muted)",fontFamily:"var(--fm)"}}>{p.t === "recent" ? "just now" : `${p.t} ago`}</span>
+                <span style={{fontSize:10,color:"var(--muted)",fontFamily:"var(--fm)"}}>{timeAgo(p.ts)} {timeAgo(p.ts) && timeAgo(p.ts) !== "just now" ? "ago" : ""}</span>
               </div>
             </div>
           ))}
@@ -1432,15 +1433,16 @@ export default function App() {
           const stored = JSON.parse(localStorage.getItem(storageKey) || "{}");
           if (stored?.access_token) token = stored.access_token;
         } catch(e) {}
-        const res = await fetch(`${supaUrl}/rest/v1/profiles?select=name,handle,pfp,rsvps_data,checkins_data&or=(rsvps_data.neq.[],checkins_data.neq.[])`, {
+        const res = await fetch(`${supaUrl}/rest/v1/profiles?select=name,handle,pfp,rsvps_data,checkins_data,created_at&or=(rsvps_data.neq.[],checkins_data.neq.[])`, {
           headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
         });
         if (res.ok) {
           const profiles = await res.json();
           const feed = [];
           profiles.forEach(p => {
-            (p.rsvps_data || []).forEach(eid => feed.push({ u: p.name, a: "RSVP'd to", e: eid, pfp: p.pfp, handle: p.handle }));
-            (p.checkins_data || []).forEach(eid => feed.push({ u: p.name, a: "checked in at", e: eid, pfp: p.pfp, handle: p.handle }));
+            const ts = p.created_at;
+            (p.rsvps_data || []).forEach(eid => feed.push({ u: p.name, a: "RSVP'd to", e: eid, pfp: p.pfp, handle: p.handle, ts }));
+            (p.checkins_data || []).forEach(eid => feed.push({ u: p.name, a: "checked in at", e: eid, pfp: p.pfp, handle: p.handle, ts }));
           });
           setGlobalActivity(feed);
         }
