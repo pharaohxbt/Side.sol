@@ -314,6 +314,7 @@ export default function App() {
       db.fetchEvents(conf).then(evs => {
         if (evs && evs.length > 0) setEvents(evs);
         else setEvents(loadState("events", null) || []);
+        refreshAttendeeCounts();
       }).catch(() => setEvents(loadState("events", null) || []));
     } else {
       // No Supabase: load everything from localStorage
@@ -433,6 +434,7 @@ export default function App() {
   useEffect(() => {
     if (!user?.supaId || !hasSupabase()) return;
     loadUserData(user.supaId).then(() => { initialLoadDone.current = true; });
+    refreshAttendeeCounts();
   }, [user?.supaId]);
 
   // ── Save to localStorage on changes ──
@@ -496,7 +498,7 @@ export default function App() {
   });
   const sortedEvs = [...filtered].sort((a, b) => {
     if (sort === "date") return a.date.localeCompare(b.date) || a.time.localeCompare(b.time);
-    if (sort === "popular") return (b.att||0) - (a.att||0);
+    if (sort === "popular") return getAtt(b.id) - getAtt(a.id);
     return b.id > a.id ? 1 : -1;
   });
   const uDates = [...new Set(cevs.map(e => e.date))].sort();
@@ -543,44 +545,24 @@ export default function App() {
     toast(wasSaved ? "Removed from saved" : "Event saved", "info");
   };
 
-  // Helper: update event attendance in Supabase
-  const updateEventAtt = (eventId, delta) => {
-    if (!hasSupabase()) return;
-    const supaUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    let token = supaKey;
-    try { const sk = `sb-${new URL(supaUrl).hostname.split('.')[0]}-auth-token`; const st = JSON.parse(localStorage.getItem(sk)||"{}"); if(st?.access_token) token=st.access_token; } catch(e){}
-    // Get current att, then update
-    fetch(`${supaUrl}/rest/v1/events?id=eq.${eventId}&select=att`, {
-      headers:{"apikey":supaKey,"Authorization":`Bearer ${token}`}
-    }).then(r=>r.json()).then(rows=>{
-      if(rows?.[0]!=null){
-        const newAtt = Math.max(0, (rows[0].att||0) + delta);
-        fetch(`${supaUrl}/rest/v1/events?id=eq.${eventId}`, {
-          method:"PATCH",
-          headers:{"Content-Type":"application/json","apikey":supaKey,"Authorization":`Bearer ${token}`,"Prefer":"return=minimal"},
-          body:JSON.stringify({att:newAtt})
-        });
-      }
-    }).catch(()=>{});
-  };
+  // Get real attendee count for an event
+  const getAtt = (evId) => attendeeCounts[evId] || 0;
 
   const togRsvp = async (id) => {
     if (rsvps.includes(id)) {
       const newRsvps = rsvps.filter(x => x !== id);
       setRsvps(newRsvps);
-      setEvents(es => es.map(e => e.id === id ? { ...e, att: Math.max(0, (e.att||1) - 1) } : e));
       syncToSupabase({ rsvps_data: newRsvps });
-      updateEventAtt(id, -1);
+      // Update local count immediately
+      setAttendeeCounts(c => ({...c, [id]: Math.max(0, (c[id]||1) - 1)}));
       toast("Left event");
     } else {
       const ev = events.find(e => e.id === id);
-      if (ev && ev.capacity && (ev.att||0) >= ev.capacity) { toast("Event is full", "error"); return; }
+      if (ev && ev.capacity && getAtt(id) >= ev.capacity) { toast("Event is full", "error"); return; }
       const newRsvps = [...rsvps, id];
       setRsvps(newRsvps);
-      setEvents(es => es.map(e => e.id === id ? { ...e, att: (e.att||0) + 1 } : e));
       syncToSupabase({ rsvps_data: newRsvps });
-      updateEventAtt(id, 1);
+      setAttendeeCounts(c => ({...c, [id]: (c[id]||0) + 1}));
       toast("Joined! Check in at the event for XP", "info");
       setTimeout(() => checkQuests(checkins, newRsvps), 300);
     }
@@ -838,7 +820,7 @@ export default function App() {
     const saved = bmarks.includes(ev.id);
     const going = rsvps.includes(ev.id);
     const verified = checkins.includes(ev.id);
-    const hot = (ev.att||0) >= 100;
+    const hot = getAtt(ev.id) >= 100;
     const fg = fGoing(ev.id);
     const vg = fg.filter(f => vips.includes(f.handle));
     const hasBanner = !!ev.banner;
@@ -891,7 +873,7 @@ export default function App() {
               {user && !going && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="qrsvp" onClick={e => { e.stopPropagation(); const np = [...pendingRequests, ev.id]; setPendingRequests(np); syncToSupabase({pending_requests_data:np}); toast("Request sent!", "info"); }}>Request</button>}
               {user && !going && ev.rsvp && pendingRequests.includes(ev.id) && <button className="qrsvp on" style={{fontSize:9,padding:"4px 10px"}} onClick={e => { e.stopPropagation(); }}>Requested</button>}
               {user && going && !verified && <button className="qrsvp on" style={{fontSize:9,padding:"4px 10px"}} onClick={e => { e.stopPropagation(); }}>Going</button>}
-              <span className="card-att">👥 {ev.att}</span>
+              <span className="card-att">👥 {getAtt(ev.id)}</span>
             </div>
           </div>
         </div>
@@ -965,7 +947,7 @@ export default function App() {
             </>}
             <hr className="dashed"/>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span className="card-att" style={{fontSize:12}}>👥 {ev.att||0}{ev.capacity ? ` / ${ev.capacity}` : ""} going</span>
+              <span className="card-att" style={{fontSize:12}}>👥 {getAtt(ev.id)}{ev.capacity ? ` / ${ev.capacity}` : ""} going</span>
               <span style={{fontSize:9,color:"#c4c0b8",fontFamily:"var(--fm)",letterSpacing:".5px"}}>SIDE.SOL</span>
             </div>
             <div style={{textAlign:"center",marginTop:8,opacity:.35}}><Barcode/></div>
@@ -1034,7 +1016,7 @@ export default function App() {
                         if(r.ok) {
                           setEventPendingUsers(p=>p.filter(x=>x.handle!==u.handle));
                           setEventAttendees(a=>[...a,u]);
-                          setEvents(es=>es.map(e=>e.id===ev.id?{...e,att:(e.att||0)+1}:e));
+                          setAttendeeCounts(c => ({...c, [ev.id]: (c[ev.id]||0)+1}));
                           toast(`${u.name} approved!`);
                         } else { toast("Approve failed","error"); }
                       });
@@ -1229,7 +1211,7 @@ export default function App() {
   };
 
   const renderPulse = () => {
-    const trending = [...cevs].sort((a,b) => (b.att||0) - (a.att||0)).slice(0,5);
+    const trending = [...cevs].sort((a,b) => getAtt(b.id) - getAtt(a.id)).slice(0,5);
     const allActivity = globalActivity.filter(a => events.find(e => e.id === a.e));
     return (
       <div className="anim-in">
@@ -1283,7 +1265,7 @@ export default function App() {
                         {fg.length > 0 && <span style={{fontSize:10,color:"var(--accent)",fontWeight:600,display:"block",marginTop:2}}>👥 {fg.map(f=>f.name.split(" ")[0]).join(", ")}</span>}
                       </div>
                       <div style={{textAlign:"right"}}>
-                        <span style={{fontSize:16,fontWeight:800,fontFamily:"var(--fm)",color:"var(--heading)"}}>{ev.att}</span>
+                        <span style={{fontSize:16,fontWeight:800,fontFamily:"var(--fm)",color:"var(--heading)"}}>{getAtt(ev.id)}</span>
                         <span style={{fontSize:8,color:"var(--muted)",fontFamily:"var(--fm)",display:"block"}}>going</span>
                       </div>
                     </div>
@@ -1579,6 +1561,25 @@ export default function App() {
   const [eventAttendees, setEventAttendees] = useState([]);
   const [eventPendingUsers, setEventPendingUsers] = useState([]);
   const [globalActivity, setGlobalActivity] = useState([]);
+  const [attendeeCounts, setAttendeeCounts] = useState({}); // {eventId: count}
+
+  // Fetch real attendee counts from all profiles
+  const refreshAttendeeCounts = useCallback(() => {
+    if (!hasSupabase()) return;
+    const supaUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    let token = supaKey;
+    try { const sk = `sb-${new URL(supaUrl).hostname.split('.')[0]}-auth-token`; const st = JSON.parse(localStorage.getItem(sk)||"{}"); if(st?.access_token) token=st.access_token; } catch(e){}
+    fetch(`${supaUrl}/rest/v1/profiles?select=rsvps_data`, {
+      headers: {"apikey":supaKey,"Authorization":`Bearer ${token}`}
+    }).then(r=>r.json()).then(profiles => {
+      const counts = {};
+      (profiles||[]).forEach(p => {
+        (p.rsvps_data||[]).forEach(eid => { counts[eid] = (counts[eid]||0) + 1; });
+      });
+      setAttendeeCounts(counts);
+    }).catch(()=>{});
+  }, []);
 
   // Fetch activity from all users
   useEffect(() => {
@@ -1827,7 +1828,7 @@ export default function App() {
                         <p className="card-host" style={{color:cfg(cat),marginBottom:2}}>{ev.host}</p>
                         <span className="card-m">{fd(ev.date)} · {ev.time}</span>
                       </div>
-                      <span className="card-att">{ev.att}</span>
+                      <span className="card-att">{getAtt(ev.id)}</span>
                     </div>
                   </div>
                 );
