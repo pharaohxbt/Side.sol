@@ -873,7 +873,7 @@ export default function App() {
               {user && !going && !ev.luma?.includes("luma") && !ev.rsvp && <button className="qrsvp" onClick={e => { e.stopPropagation(); togRsvp(ev.id); }}>Join</button>}
               {user && !going && !ev.luma?.includes("luma") && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="qrsvp" onClick={e => { e.stopPropagation(); const np = [...pendingRequests, ev.id]; setPendingRequests(np); syncToSupabase({pending_requests_data:np}); toast("Request sent!", "info"); }}>Request</button>}
               {user && !going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="qrsvp on" style={{fontSize:9,padding:"4px 10px"}} onClick={e => { e.stopPropagation(); }}>Requested</button>}
-              {user && !going && ev.luma?.includes("luma") && <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="qrsvp" onClick={e => { e.stopPropagation(); }} style={{textDecoration:"none",fontSize:9,padding:"4px 10px"}}>Luma ↗</a>}
+              {user && !going && ev.luma?.includes("luma") && (ev.lumaEventId ? <button className="luma-checkout--button qrsvp" type="button" data-luma-action="checkout" data-luma-event-id={ev.lumaEventId} onClick={e => { e.stopPropagation(); setTimeout(reloadLumaScript, 50); }} style={{fontSize:9,padding:"5px 12px"}}>Register</button> : <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="qrsvp" onClick={e => { e.stopPropagation(); }} style={{textDecoration:"none",fontSize:9,padding:"5px 12px"}}>Register ↗</a>)}
               {user && going && !verified && <button className="qrsvp on" style={{fontSize:9,padding:"4px 10px"}} onClick={e => { e.stopPropagation(); }}>Going</button>}
               <span className="card-att">👥 {getAtt(ev.id)}</span>
             </div>
@@ -882,6 +882,24 @@ export default function App() {
       </div>
     );
   };
+
+  // ── Luma checkout: reload script to detect buttons ──
+  const reloadLumaScript = useCallback(() => {
+    const existing = document.getElementById("luma-checkout");
+    if (existing) existing.remove();
+    const s = document.createElement("script");
+    s.id = "luma-checkout";
+    s.src = "https://embed.lu.ma/checkout-button.js";
+    s.async = true;
+    document.body.appendChild(s);
+  }, []);
+  useEffect(() => {
+    // Reload Luma script when event detail opens or view changes (so checkout buttons work)
+    const hasLumaEvents = events.some(e => e.lumaEventId);
+    if (hasLumaEvents) {
+      setTimeout(reloadLumaScript, 200);
+    }
+  }, [sel, view, events, reloadLumaScript]);
 
   // ── Event Detail ──
   const renderDetail = (ev) => {
@@ -1063,18 +1081,6 @@ export default function App() {
                   data-luma-action="checkout"
                   data-luma-event-id={ev.lumaEventId || ""}
                   style={{flex:1,cursor:"pointer"}}
-                  ref={el => {
-                    if (el && ev.lumaEventId) {
-                      // Load/reload the Luma script so it detects this button
-                      const existing = document.getElementById("luma-checkout");
-                      if (existing) existing.remove();
-                      const s = document.createElement("script");
-                      s.id = "luma-checkout";
-                      s.src = "https://embed.lu.ma/checkout-button.js";
-                      s.async = true;
-                      document.body.appendChild(s);
-                    }
-                  }}
                 >Register on Luma</button>
                 <button className="btn-outline" style={{flex:1}} onClick={() => {
                   togRsvp(ev.id);
