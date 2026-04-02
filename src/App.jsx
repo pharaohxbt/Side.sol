@@ -765,7 +765,8 @@ export default function App() {
           </div>
           <Fld l="Location" req err={errs.loc}><input className="field" placeholder="Venue, address" value={f.loc} onChange={e=>sF({...f,loc:e.target.value})}/></Fld>
           <Fld l="Description"><textarea className="field" rows={3} placeholder="What's it about?" value={f.desc} onChange={e=>sF({...f,desc:e.target.value})}/></Fld>
-          <Fld l="RSVP link" err={errs.luma}><input className="field" placeholder="https://lu.ma/..." value={f.luma} onChange={e=>sF({...f,luma:e.target.value})}/></Fld>
+          <Fld l="RSVP / Luma link" err={errs.luma}><input className="field" placeholder="https://lu.ma/..." value={f.luma} onChange={e=>sF({...f,luma:e.target.value})}/></Fld>
+          {f.luma?.includes("luma") && <Fld l="Luma Event ID (optional, for in-app checkout)"><input className="field" placeholder="evt-AbCdEfGh..." value={f.lumaEventId||""} onChange={e=>sF({...f,lumaEventId:e.target.value})}/></Fld>}
           <div className="r2">
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <div onClick={()=>sF({...f,rsvp:!f.rsvp})} className="tog" data-on={f.rsvp}><div className="tog-t" style={{transform:f.rsvp?"translateX(22px)":"translateX(0)"}}/></div>
@@ -1056,7 +1057,12 @@ export default function App() {
               {!going && !ev.luma?.includes("luma") && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => { const np = [...pendingRequests, ev.id]; setPendingRequests(np); syncToSupabase({pending_requests_data:np}); toast("Request sent! The host will review it.", "info"); }}>🔒 Request</button>}
               {!going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>Requested — Awaiting Approval</button>}
               {!going && ev.luma?.includes("luma") && <>
-                <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-glow" style={{flex:1,textDecoration:"none",textAlign:"center"}}>Register on Luma ↗</a>
+                {ev.lumaEventId ? (
+                  <button className="luma-checkout--button btn-glow" data-luma-action="checkout" data-luma-event-id={ev.lumaEventId}
+                    style={{flex:1,cursor:"pointer"}}>Register on Luma</button>
+                ) : (
+                  <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-glow" style={{flex:1,textDecoration:"none",textAlign:"center"}}>Register on Luma ↗</a>
+                )}
                 <button className="btn-outline" style={{flex:1}} onClick={() => {
                   togRsvp(ev.id);
                   toast("Marked as going!", "info");
