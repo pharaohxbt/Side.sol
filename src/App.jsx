@@ -1051,27 +1051,40 @@ export default function App() {
               <div className="verified-banner" style={{animation:"pulseRing 1.5s ease"}}>✓ Attendance Verified — XP Earned</div>
             )}
             <div style={{display:"flex",gap:8}}>
-              {!going && !ev.rsvp && <button className="btn-glow" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Join</button>}
-              {!going && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => { const np = [...pendingRequests, ev.id]; setPendingRequests(np); syncToSupabase({pending_requests_data:np}); toast("Request sent! The host will review it.", "info"); }}>🔒 Request</button>}
-              {!going && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>Requested — Awaiting Approval</button>}
+              {!going && !ev.luma?.includes("luma") && !ev.rsvp && <button className="btn-glow" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Join</button>}
+              {!going && !ev.luma?.includes("luma") && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => { const np = [...pendingRequests, ev.id]; setPendingRequests(np); syncToSupabase({pending_requests_data:np}); toast("Request sent! The host will review it.", "info"); }}>🔒 Request</button>}
+              {!going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>Requested — Awaiting Approval</button>}
+              {!going && ev.luma?.includes("luma") && <button className="btn-glow" style={{flex:1}} onClick={() => {
+                const el = document.getElementById("luma-embed-" + ev.id);
+                if (el) el.style.display = el.style.display === "none" ? "block" : "none";
+              }}>Register on Luma</button>}
               {going && !verified && <button className="btn-outline" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Leave</button>}
-              {ev.luma && ev.luma.includes("luma") && <>
-                <button className="btn-outline" style={{flex:1}} onClick={() => {
-                  const el = document.getElementById("luma-embed-" + ev.id);
-                  if (el) el.style.display = el.style.display === "none" ? "block" : "none";
-                }}>Register on Luma</button>
-              </>}
               {ev.luma && !ev.luma.includes("luma") && <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{flex:1,textDecoration:"none",textAlign:"center"}}>RSVP ↗</a>}
             </div>
-            {ev.luma && ev.luma.includes("luma") && (
-              <div id={"luma-embed-" + ev.id} style={{display:"none",marginTop:12,borderRadius:16,overflow:"hidden",border:"1px solid var(--border)",animation:"fadeUp .3s ease both"}}>
-                <iframe src={ev.luma.replace("luma.com/","lu.ma/embed/event/").replace("https://lu.ma/","https://lu.ma/embed/event/") + (ev.luma.includes("?") ? "&embed=true" : "?embed=true")}
-                  style={{width:"100%",height:450,border:"none",borderRadius:16,background:"var(--surface)"}}
-                  allow="payment"
-                  allowFullScreen
-                />
-              </div>
-            )}
+            {ev.luma && ev.luma.includes("luma") && (() => {
+              // Extract slug from various Luma URL formats
+              let embedUrl = ev.luma;
+              try {
+                const u = new URL(ev.luma);
+                const slug = u.pathname.replace(/^\//, "").split("/")[0];
+                embedUrl = `https://lu.ma/embed/${slug}`;
+              } catch(e) {}
+              return (
+                <div id={"luma-embed-" + ev.id} style={{display:"none",marginTop:12}}>
+                  <div style={{borderRadius:16,overflow:"hidden",border:"1px solid var(--border)",animation:"fadeUp .3s ease both"}}>
+                    <iframe src={embedUrl}
+                      style={{width:"100%",height:500,border:"none",background:"var(--surface)"}}
+                      allow="payment"
+                      allowFullScreen
+                    />
+                  </div>
+                  {!going && <button className="btn-glow" style={{width:"100%",marginTop:10,padding:"14px"}} onClick={() => {
+                    togRsvp(ev.id);
+                    toast("Marked as going! Make sure you completed Luma registration.", "info");
+                  }}>✓ I've registered — Mark me as going</button>}
+                </div>
+              );
+            })()}
             {mine && <button className="btn-sm" style={{width:"100%",padding:"12px",borderRadius:14,fontSize:13}} onClick={() => { setSel(null); setShowHostCode(ev); }}>🔑 Host Dashboard — Show Check-in Code</button>}
           </div>
         </div>
