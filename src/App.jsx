@@ -1062,13 +1062,8 @@ export default function App() {
               {ev.luma && !ev.luma.includes("luma") && <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{flex:1,textDecoration:"none",textAlign:"center"}}>RSVP ↗</a>}
             </div>
             {ev.luma && ev.luma.includes("luma") && (() => {
-              // Extract slug from various Luma URL formats
-              let embedUrl = ev.luma;
-              try {
-                const u = new URL(ev.luma);
-                const slug = u.pathname.replace(/^\//, "").split("/")[0];
-                embedUrl = `https://lu.ma/embed/${slug}`;
-              } catch(e) {}
+              // Use the direct Luma URL in the iframe
+              const embedUrl = ev.luma.replace("luma.com", "lu.ma");
               return (
                 <div id={"luma-embed-" + ev.id} style={{display:"none",marginTop:12}}>
                   <div style={{borderRadius:16,overflow:"hidden",border:"1px solid var(--border)",animation:"fadeUp .3s ease both"}}>
