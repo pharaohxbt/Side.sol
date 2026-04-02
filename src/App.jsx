@@ -1076,12 +1076,27 @@ export default function App() {
               {!going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>Requested — Awaiting Approval</button>}
               {!going && ev.luma?.includes("luma") && <>
                 <button
-                  className="luma-checkout--button btn-glow"
+                  className="btn-glow"
                   type="button"
-                  data-luma-action="checkout"
-                  data-luma-event-id={ev.lumaEventId || ""}
                   style={{flex:1,cursor:"pointer"}}
-                  onClick={() => setTimeout(reloadLumaScript, 50)}
+                  onClick={() => {
+                    // Create a temporary Luma button outside the modal, click it
+                    const tmp = document.createElement("button");
+                    tmp.className = "luma-checkout--button";
+                    tmp.type = "button";
+                    tmp.setAttribute("data-luma-action", "checkout");
+                    tmp.setAttribute("data-luma-event-id", ev.lumaEventId || "");
+                    tmp.style.cssText = "position:fixed;top:-9999px;left:-9999px;";
+                    document.body.appendChild(tmp);
+                    // Remove old script, load fresh, then click
+                    const old = document.getElementById("luma-checkout");
+                    if (old) old.remove();
+                    const s = document.createElement("script");
+                    s.id = "luma-checkout";
+                    s.src = "https://embed.lu.ma/checkout-button.js";
+                    s.onload = () => { setTimeout(() => { tmp.click(); setTimeout(() => tmp.remove(), 2000); }, 100); };
+                    document.body.appendChild(s);
+                  }}
                 >Register on Luma</button>
                 <button className="btn-outline" style={{flex:1}} onClick={() => {
                   togRsvp(ev.id);
