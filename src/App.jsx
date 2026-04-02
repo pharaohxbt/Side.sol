@@ -1058,8 +1058,25 @@ export default function App() {
               {!going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>Requested — Awaiting Approval</button>}
               {!going && ev.luma?.includes("luma") && <>
                 {ev.lumaEventId ? (
-                  <button className="luma-checkout--button btn-glow" data-luma-action="checkout" data-luma-event-id={ev.lumaEventId}
-                    style={{flex:1,cursor:"pointer"}}>Register on Luma</button>
+                  <button className="btn-glow" style={{flex:1,cursor:"pointer"}} onClick={() => {
+                    // Create a temporary Luma checkout button in the DOM, trigger it, then remove
+                    const tmp = document.createElement("button");
+                    tmp.className = "luma-checkout--button";
+                    tmp.setAttribute("data-luma-action", "checkout");
+                    tmp.setAttribute("data-luma-event-id", ev.lumaEventId);
+                    tmp.style.display = "none";
+                    document.body.appendChild(tmp);
+                    // Re-init Luma script to detect the new button
+                    const script = document.getElementById("luma-checkout");
+                    if (script) {
+                      const newScript = document.createElement("script");
+                      newScript.src = script.src;
+                      newScript.onload = () => { tmp.click(); setTimeout(() => tmp.remove(), 1000); };
+                      document.body.appendChild(newScript);
+                    } else {
+                      window.open(ev.luma, "_blank");
+                    }
+                  }}>Register on Luma</button>
                 ) : (
                   <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-glow" style={{flex:1,textDecoration:"none",textAlign:"center"}}>Register on Luma ↗</a>
                 )}
