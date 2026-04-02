@@ -1057,11 +1057,11 @@ export default function App() {
               {!going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>Requested — Awaiting Approval</button>}
               {!going && ev.luma?.includes("luma") && <>
                 <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-glow" style={{flex:1,textDecoration:"none",textAlign:"center"}}>Register on Luma ↗</a>
+                <button className="btn-outline" style={{flex:1}} onClick={() => {
+                  togRsvp(ev.id);
+                  toast("Marked as going!", "info");
+                }}>✓ I've registered</button>
               </>}
-              {!going && ev.luma?.includes("luma") && <button className="btn-outline" style={{flex:1}} onClick={() => {
-                togRsvp(ev.id);
-                toast("Marked as going!", "info");
-              }}>✓ I've registered</button>}
               {going && !verified && <button className="btn-outline" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Leave</button>}
               {ev.luma && !ev.luma.includes("luma") && <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{flex:1,textDecoration:"none",textAlign:"center"}}>RSVP ↗</a>}
             </div>
