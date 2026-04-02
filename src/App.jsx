@@ -1054,32 +1054,16 @@ export default function App() {
               {!going && !ev.luma?.includes("luma") && !ev.rsvp && <button className="btn-glow" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Join</button>}
               {!going && !ev.luma?.includes("luma") && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => { const np = [...pendingRequests, ev.id]; setPendingRequests(np); syncToSupabase({pending_requests_data:np}); toast("Request sent! The host will review it.", "info"); }}>🔒 Request</button>}
               {!going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>Requested — Awaiting Approval</button>}
-              {!going && ev.luma?.includes("luma") && <button className="btn-glow" style={{flex:1}} onClick={() => {
-                const el = document.getElementById("luma-embed-" + ev.id);
-                if (el) el.style.display = el.style.display === "none" ? "block" : "none";
-              }}>Register on Luma</button>}
+              {!going && ev.luma?.includes("luma") && <>
+                <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-glow" style={{flex:1,textDecoration:"none",textAlign:"center"}}>Register on Luma ↗</a>
+              </>}
+              {!going && ev.luma?.includes("luma") && <button className="btn-outline" style={{flex:1}} onClick={() => {
+                togRsvp(ev.id);
+                toast("Marked as going!", "info");
+              }}>✓ I've registered</button>}
               {going && !verified && <button className="btn-outline" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Leave</button>}
               {ev.luma && !ev.luma.includes("luma") && <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{flex:1,textDecoration:"none",textAlign:"center"}}>RSVP ↗</a>}
             </div>
-            {ev.luma && ev.luma.includes("luma") && (() => {
-              // Use the direct Luma URL in the iframe
-              const embedUrl = ev.luma.replace("luma.com", "lu.ma");
-              return (
-                <div id={"luma-embed-" + ev.id} style={{display:"none",marginTop:12}}>
-                  <div style={{borderRadius:16,overflow:"hidden",border:"1px solid var(--border)",animation:"fadeUp .3s ease both"}}>
-                    <iframe src={embedUrl}
-                      style={{width:"100%",height:500,border:"none",background:"var(--surface)"}}
-                      allow="payment"
-                      allowFullScreen
-                    />
-                  </div>
-                  {!going && <button className="btn-glow" style={{width:"100%",marginTop:10,padding:"14px"}} onClick={() => {
-                    togRsvp(ev.id);
-                    toast("Marked as going! Make sure you completed Luma registration.", "info");
-                  }}>✓ I've registered — Mark me as going</button>}
-                </div>
-              );
-            })()}
             {mine && <button className="btn-sm" style={{width:"100%",padding:"12px",borderRadius:14,fontSize:13}} onClick={() => { setSel(null); setShowHostCode(ev); }}>🔑 Host Dashboard — Show Check-in Code</button>}
           </div>
         </div>
