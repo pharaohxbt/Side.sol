@@ -419,6 +419,21 @@ export default function App() {
         } catch(e) {}
       })();
     }
+    // Deep link: auto-add friend from shared profile URL (?add=@handle)
+    const addParam = new URLSearchParams(window.location.search).get("add");
+    if (addParam && user) {
+      setTimeout(() => { addFriend(addParam); window.history.replaceState(null, "", window.location.pathname); toast(`Added ${addParam}!`); }, 500);
+    } else if (addParam && !user) {
+      // Save for after sign-in
+      saveState("pending_add", addParam);
+      setTimeout(() => { toast("Sign in to add this friend", "info"); setShowAuth(true); }, 500);
+    }
+    // Check for pending add after sign-in
+    const pendingAdd = loadState("pending_add", null);
+    if (pendingAdd && user) {
+      setTimeout(() => { addFriend(pendingAdd); saveState("pending_add", null); toast(`Added ${pendingAdd}!`); }, 500);
+    }
+
     // Deep link: open event from URL hash
     const hash = window.location.hash;
     if (hash.startsWith("#event=")) {
@@ -1215,7 +1230,7 @@ export default function App() {
     const allActivity = globalActivity.filter(a => events.find(e => e.id === a.e));
     return (
       <div className="anim-in">
-        <h1 className="vt" style={{marginTop:18}}>⚡ Live Pulse</h1>
+        <h1 className="vt" style={{marginTop:18}}>Activity</h1>
         <p className="vs">Real-time conference activity</p>
         <PulseTicker activity={allActivity} events={events}/>
 
@@ -1872,7 +1887,16 @@ export default function App() {
                   <span className="prof-stat">{completedQuests.length}/{QUESTS.length} ⚡</span>
                 </div>
               </div>
-              <button className="ib" onClick={() => setShowPrivacy(true)} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.08)",color:"white",backdropFilter:"blur(4px)"}}>🔒</button>
+              <div style={{display:"flex",gap:6}}>
+                <button className="ib" onClick={async () => {
+                  const url = `${window.location.origin}?add=${encodeURIComponent(user.handle)}`;
+                  const text = `Add me on SIDE.SOL! ${url}`;
+                  if (navigator.share) { try { await navigator.share({title:"Add me on SIDE.SOL",text:user.handle,url}); return; } catch(e){} }
+                  const ok = await copyText(text);
+                  toast(ok ? "Profile link copied!" : "Copy failed", ok ? "success" : "error");
+                }} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.08)",color:"white",backdropFilter:"blur(4px)"}}>↗</button>
+                <button className="ib" onClick={() => setShowPrivacy(true)} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.08)",color:"white",backdropFilter:"blur(4px)"}}>🔒</button>
+              </div>
             </div>
           </div>
         </div>
@@ -2272,6 +2296,35 @@ export default function App() {
             <div className="sbar" style={{marginBottom:7,padding:"3px 3px 3px 14px"}}><span style={{color:"var(--muted)",fontSize:13}}>🔍</span><input placeholder="Search events, hosts..." value={search} onChange={e => setSearch(e.target.value)} style={{padding:"7px 0"}}/>{search && <button className="ib-sm" onClick={() => setSearch("")}>✕</button>}</div>
             <div className="scr" style={{marginBottom:4}}>{["All",...Object.keys(CATS)].map(c => <button key={c} className={`tag ${catF===c?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setCatF(c)}>{c!=="All"?(CATS[c]?.em+" "):""}{c}</button>)}</div>
             <div className="scr" style={{marginBottom:6}}><button className={`tag ${dateF==="All"?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setDateF("All")}>All days</button>{uDates.map(d => <button key={d} className={`tag ${dateF===d?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setDateF(d)}>{fd(d)}</button>)}</div>
+
+            {/* ═══ FRIENDS GOING — Surface the killer feature ═══ */}
+            {user && friends.length > 0 && (() => {
+              const friendEvs = cevs.filter(ev => fGoing(ev.id).length > 0).slice(0, 4);
+              return friendEvs.length > 0 ? (
+                <div style={{marginBottom:12,padding:"14px 16px",background:"linear-gradient(135deg,rgba(153,69,255,.05),rgba(20,241,149,.03))",borderRadius:18,border:"1px solid rgba(153,69,255,.1)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <p style={{fontSize:12,fontWeight:700,fontFamily:"var(--fm)",color:"var(--accent)",textTransform:"uppercase",letterSpacing:".8px"}}>👥 Friends are going</p>
+                    <button style={{fontSize:11,fontWeight:600,color:"var(--accent)",background:"none",border:"none",cursor:"pointer",fontFamily:"var(--f)"}} onClick={() => { setView("friends"); setFriendsTab("overlap"); }}>See all →</button>
+                  </div>
+                  <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:4}} className="scr">
+                    {friendEvs.map(ev => {
+                      const cat = CATS[ev.cat] || CATS.Other;
+                      const fg = fGoing(ev.id);
+                      return (
+                        <div key={ev.id} onClick={() => setSel(ev)} style={{minWidth:200,flexShrink:0,background:"var(--surface)",borderRadius:14,padding:"12px 14px",border:`1px solid ${cat.ac}25`,cursor:"pointer",transition:"all .2s",boxShadow:"var(--sh-sm)"}}>
+                          <div style={{display:"flex",gap:4,marginBottom:4}}>
+                            {fg.slice(0,4).map((fr,j) => <div key={fr.handle} style={{marginLeft:j?-6:0,zIndex:4-j}}><Avatar name={fr.name} s={20} bg={uc(fr.handle)} pfp={fr.pfp}/></div>)}
+                          </div>
+                          <p style={{fontSize:13,fontWeight:700,fontFamily:"var(--fd)",color:"var(--heading)",lineHeight:1.2,marginBottom:2}}>{ev.title}</p>
+                          <p style={{fontSize:10,color:"var(--muted)",fontFamily:"var(--fm)"}}>{fd(ev.date)} · {fg.length} friend{fg.length!==1?"s":""}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"2px 0 8px"}}>
               <span style={{fontSize:11,color:"var(--muted)",fontFamily:"var(--fm)"}}>{sortedEvs.length} event{sortedEvs.length!==1?"s":""}</span>
               <div style={{display:"flex",alignItems:"center",gap:2}}>
@@ -2319,7 +2372,7 @@ export default function App() {
       {/* BOTTOM NAV */}
       <div className="bnav">
         <button className={view==="home"?"on":""} onClick={() => setView("home")}><span style={{fontSize:17}}>🔍</span><span>Explore</span></button>
-        <button className={view==="pulse"?"on":""} onClick={() => setView("pulse")}><span style={{fontSize:17}}>⚡</span><span>Pulse</span></button>
+        <button className={view==="pulse"?"on":""} onClick={() => setView("pulse")}><span style={{fontSize:17}}>📢</span><span>Activity</span></button>
         <button onClick={() => { if(!user) { setShowAuth(true); toast("Sign in first","info"); } else { setEditing(null); setShowSubmit(true); } }} style={{padding:0}}><div className="fab">+</div></button>
         <button className={view==="friends"?"on":""} onClick={() => setView("friends")} style={{position:"relative"}}><span style={{fontSize:17}}>👥</span><span>Network</span>{friendRequests.length > 0 && <span style={{position:"absolute",top:4,right:"calc(50% - 20px)",width:16,height:16,borderRadius:"50%",background:"#FF7043",color:"white",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(255,112,67,.4)"}}>{friendRequests.length}</span>}</button>
         <button className={view==="profile"?"on":""} onClick={() => setView("profile")}><span style={{fontSize:17}}>🏆</span><span>Profile</span></button>
@@ -2350,29 +2403,43 @@ export default function App() {
       </>)}
       {showOnboarding && (<>
         <div className="overlay" onClick={() => {}}/>
-        <div className="modal" style={{maxHeight:"70vh",textAlign:"center"}}>
-          {[
-            {icon:"🌴",title:"Welcome to SIDE.SOL",desc:"Discover side events at Solana conferences. Find events, RSVP, and connect with people you want to meet."},
-            {icon:"⭐",title:"Find Your People",desc:"Add friends and notable ecosystem people. Star anyone as 'Must Meet' to track their events. See the Overlap tab to find where you'll cross paths."},
-            {icon:"📍",title:"Check In & Earn XP",desc:"At each event, the host displays a 6-letter code. Enter it to verify attendance, earn XP, and complete Side Quests."},
-            {icon:"🏆",title:"Climb the Leaderboard",desc:"Complete 11 quests, level up from Lurker to Solana God, and compete on the leaderboard. Let's go!"},
-          ].map((s,i) => i === onboardStep ? (
-            <div key={i} style={{padding:"20px 8px",animation:"fadeUp .4s ease both"}}>
-              <div style={{fontSize:56,marginBottom:16,animation:"float 2s ease-in-out infinite"}}>{s.icon}</div>
-              <h2 style={{fontSize:22,fontWeight:800,fontFamily:"var(--fd)",letterSpacing:"-.3px",marginBottom:8}}>{s.title}</h2>
-              <p style={{color:"var(--muted)",fontSize:14,lineHeight:1.6,marginBottom:24,maxWidth:300,margin:"0 auto 24px"}}>{s.desc}</p>
-              <div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:20}}>
-                {[0,1,2,3].map(d => <div key={d} style={{width:8,height:8,borderRadius:"50%",background:d===onboardStep?"var(--accent)":"var(--border)",transition:"all .3s"}}/>)}
+        <div className="modal" style={{maxHeight:"75vh",textAlign:"center"}}>
+          {onboardStep === 0 ? (
+            <div style={{padding:"24px 8px",animation:"fadeUp .4s ease both"}}>
+              <div style={{width:64,height:64,borderRadius:20,background:"linear-gradient(135deg,#9945FF,#14F195)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",boxShadow:"0 8px 32px rgba(153,69,255,.3)",animation:"float 2.5s ease-in-out infinite"}}><SolIc/></div>
+              <h2 style={{fontSize:26,fontWeight:800,fontFamily:"var(--fd)",letterSpacing:"-.4px",marginBottom:6}}>Welcome to SIDE.SOL</h2>
+              <p style={{color:"var(--muted)",fontSize:15,lineHeight:1.6,maxWidth:320,margin:"0 auto 8px"}}>The side event app for Solana conferences</p>
+              <div style={{display:"flex",flexDirection:"column",gap:12,margin:"24px 0",textAlign:"left",maxWidth:300,marginLeft:"auto",marginRight:"auto"}}>
+                <div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:22,width:36,textAlign:"center"}}>🔍</span><div><p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>Find events</p><p style={{fontSize:12,color:"var(--muted)"}}>Browse, RSVP, and build your schedule</p></div></div>
+                <div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:22,width:36,textAlign:"center"}}>👥</span><div><p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>Find your people</p><p style={{fontSize:12,color:"var(--muted)"}}>See which friends are going where</p></div></div>
+                <div style={{display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:22,width:36,textAlign:"center"}}>⚡</span><div><p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>Earn XP</p><p style={{fontSize:12,color:"var(--muted)"}}>Check in at events, complete quests</p></div></div>
               </div>
-              {i < 3 ? (
-                <button className="btn-glow" onClick={() => setOnboardStep(i+1)} style={{padding:"14px 40px",fontSize:16}}>Next</button>
+              {user ? (
+                <button className="btn-glow" onClick={() => setOnboardStep(1)} style={{padding:"15px 44px",fontSize:16,width:"100%",maxWidth:320}}>Next</button>
               ) : (
-                <button className="btn-glow" onClick={() => { setShowOnboarding(false); saveState("onboarded", true); }} style={{padding:"14px 40px",fontSize:16}}>Get Started</button>
+                <button className="btn-glow" onClick={() => { setShowOnboarding(false); saveState("onboarded", true); setShowAuth(true); }} style={{padding:"15px 44px",fontSize:16,width:"100%",maxWidth:320}}>Sign in with X to start</button>
               )}
-              {i > 0 && <button style={{background:"none",border:"none",color:"var(--muted)",cursor:"pointer",marginTop:10,fontSize:13,fontFamily:"var(--f)"}} onClick={() => setOnboardStep(i-1)}>Back</button>}
-              {i < 3 && <button style={{background:"none",border:"none",color:"var(--muted)",cursor:"pointer",marginTop:10,fontSize:12,fontFamily:"var(--f)"}} onClick={() => { setShowOnboarding(false); saveState("onboarded", true); }}>Skip</button>}
+              <button style={{background:"none",border:"none",color:"var(--muted)",cursor:"pointer",marginTop:12,fontSize:12,fontFamily:"var(--f)"}} onClick={() => { setShowOnboarding(false); saveState("onboarded", true); }}>Browse first</button>
             </div>
-          ) : null)}
+          ) : (
+            <div style={{padding:"24px 8px",animation:"fadeUp .4s ease both"}}>
+              <div style={{fontSize:48,marginBottom:12,animation:"float 2s ease-in-out infinite"}}>👥</div>
+              <h2 style={{fontSize:22,fontWeight:800,fontFamily:"var(--fd)",letterSpacing:"-.3px",marginBottom:6}}>Add your first friend</h2>
+              <p style={{color:"var(--muted)",fontSize:14,lineHeight:1.6,maxWidth:300,margin:"0 auto 20px"}}>Type their X handle to see which events they're attending. Share your profile so they can add you back.</p>
+              <div style={{display:"flex",gap:8,maxWidth:320,margin:"0 auto 16px"}}>
+                <div className="sbar" style={{flex:1}}>
+                  <span style={{color:"var(--muted)",fontFamily:"var(--fm)",fontSize:14}}>@</span>
+                  <input placeholder="Their X handle..." value={addFQ} onChange={e => setAddFQ(e.target.value)}
+                    onKeyDown={e => { if(e.key==="Enter"&&addFQ) { addFriend(addFQ); setAddFQ(""); } }}/>
+                </div>
+                <button className="btn-sm" onClick={() => { if(addFQ) { addFriend(addFQ); setAddFQ(""); } }} style={{padding:"10px 20px"}}>Add</button>
+              </div>
+              {friends.length > 0 && <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:16}}>
+                {friends.slice(0,5).map(fr => <div key={fr.handle} className="friend-chip"><Avatar name={fr.name} s={18} bg={uc(fr.handle)} pfp={fr.pfp}/><span>{fr.name}</span></div>)}
+              </div>}
+              <button className="btn-glow" onClick={() => { setShowOnboarding(false); saveState("onboarded", true); }} style={{padding:"15px 44px",fontSize:16,width:"100%",maxWidth:320}}>{friends.length > 0 ? "Let's go!" : "Skip for now"}</button>
+            </div>
+          )}
         </div>
       </>)}
       {showAuth && (<>
