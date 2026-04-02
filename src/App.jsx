@@ -1081,6 +1081,7 @@ export default function App() {
                   data-luma-action="checkout"
                   data-luma-event-id={ev.lumaEventId || ""}
                   style={{flex:1,cursor:"pointer"}}
+                  onClick={() => setTimeout(reloadLumaScript, 50)}
                 >Register on Luma</button>
                 <button className="btn-outline" style={{flex:1}} onClick={() => {
                   togRsvp(ev.id);
