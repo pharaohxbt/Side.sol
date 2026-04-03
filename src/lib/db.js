@@ -51,9 +51,19 @@ export async function fetchEvents(conf) {
 
 export async function createEvent(ev, userId) {
   if (!hasSupabase()) return null;
+  // Only send columns that exist in the events table
+  const row = {
+    title: ev.title, cat: ev.cat, date: ev.date, time: ev.time || "",
+    loc: ev.loc, host: ev.host, desc: ev.desc || "", rsvp: ev.rsvp || false,
+    luma: ev.luma || "", conf: ev.conf, banner: ev.banner || "",
+    capacity: ev.capacity || 0, announcement: ev.announcement || "",
+    created_by: userId,
+  };
+  if (ev.lumaEventId) row.lumaEventId = ev.lumaEventId;
+  if (ev.bannerPos != null) row.bannerPos = ev.bannerPos;
   const { data, error } = await supabase
     .from("events")
-    .insert({ ...ev, created_by: userId })
+    .insert(row)
     .select()
     .single();
   if (error) { console.error("createEvent:", error); return null; }
@@ -62,9 +72,12 @@ export async function createEvent(ev, userId) {
 
 export async function updateEvent(id, updates) {
   if (!hasSupabase()) return null;
+  const row = {};
+  const allowed = ["title","cat","date","time","loc","host","desc","rsvp","luma","conf","banner","capacity","announcement","lumaEventId","bannerPos"];
+  for (const k of allowed) { if (updates[k] !== undefined) row[k] = updates[k]; }
   const { data, error } = await supabase
     .from("events")
-    .update(updates)
+    .update(row)
     .eq("id", id)
     .select()
     .single();
