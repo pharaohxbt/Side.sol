@@ -710,13 +710,15 @@ export default function App() {
     };
     const submit = async () => {
       if (!validate()) return;
+      // Strip internal-only fields before sending to Supabase
+      const {isLuma, _lumaLoading, ...cleanData} = f;
       if (hasSupabase()) {
         if (isE) {
-          const updated = await db.updateEvent(initial.id, f);
+          const updated = await db.updateEvent(initial.id, cleanData);
           if (updated) setEvents(es => es.map(e => e.id === initial.id ? {...e,...updated} : e));
           toast("Updated!");
         } else {
-          const created = await db.createEvent({ ...f, conf }, user?.supaId);
+          const created = await db.createEvent({ ...cleanData, conf }, user?.supaId);
           if (created) setEvents(es => [created, ...es]);
           toast("Submitted!");
         }
