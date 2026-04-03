@@ -772,11 +772,29 @@ export default function App() {
             <div><span style={{fontSize:13,fontWeight:600}}>Luma Event</span><p style={{fontSize:11,color:"var(--muted)",marginTop:1}}>Registration handled via Luma</p></div>
           </div>
           {f.isLuma ? <>
-            <Fld l="Luma link" err={errs.luma}><input className="field" placeholder="https://luma.com/your-event" value={f.luma} onChange={e=>sF({...f,luma:e.target.value})}/></Fld>
-            <Fld l="Luma Event ID" err={errs.lumaEventId}>
-              <input className="field" placeholder="evt-AbCdEfGh..." value={f.lumaEventId||""} onChange={e=>sF({...f,lumaEventId:e.target.value})}/>
-              <p style={{fontSize:10,color:"var(--muted)",marginTop:4,lineHeight:1.4}}>Find this in the page source of your Luma event (search for "evt-"). Required for in-app registration.</p>
+            <Fld l="Luma link" err={errs.luma}>
+              <input className="field" placeholder="https://luma.com/your-event" value={f.luma} onChange={e => {
+                const val = e.target.value;
+                sF(prev => ({...prev, luma: val}));
+                // Auto-extract event ID when a valid Luma URL is pasted
+                if (val.includes("luma.com/") || val.includes("lu.ma/")) {
+                  sF(prev => ({...prev, lumaEventId: "", _lumaLoading: true}));
+                  fetch(`/api/luma-id?url=${encodeURIComponent(val)}`)
+                    .then(r => r.json())
+                    .then(d => { if (d.eventId) sF(prev => ({...prev, lumaEventId: d.eventId, _lumaLoading: false})); else sF(prev => ({...prev, _lumaLoading: false})); })
+                    .catch(() => sF(prev => ({...prev, _lumaLoading: false})));
+                }
+              }}/>
             </Fld>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0"}}>
+              <div style={{flex:1}}>
+                <p style={{fontSize:11,fontWeight:700,color:f.lumaEventId?"#0A8F5A":"var(--muted)",fontFamily:"var(--fm)"}}>{f._lumaLoading ? "⏳ Detecting event ID..." : f.lumaEventId ? `✓ ${f.lumaEventId}` : "Paste a Luma link to auto-detect the event ID"}</p>
+              </div>
+              {f.lumaEventId && <span style={{fontSize:18}}>✅</span>}
+            </div>
+            {!f.lumaEventId && !f._lumaLoading && f.luma?.includes("luma") && <Fld l="Or enter Luma Event ID manually" err={errs.lumaEventId}>
+              <input className="field" placeholder="evt-AbCdEfGh..." value={f.lumaEventId||""} onChange={e=>sF({...f,lumaEventId:e.target.value})}/>
+            </Fld>}
           </> : <>
             <Fld l="RSVP link (optional)" err={errs.luma}><input className="field" placeholder="https://..." value={f.luma} onChange={e=>sF({...f,luma:e.target.value})}/></Fld>
           </>}
