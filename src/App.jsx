@@ -123,6 +123,19 @@ const Barcode = () => (
   </svg>
 );
 
+const SkeletonCard = () => (
+  <div style={{borderRadius:18,padding:"20px 22px",background:"var(--surface)",border:"1px solid var(--border)",boxShadow:"var(--sh-sm)"}}>
+    <div style={{display:"flex",gap:8,marginBottom:12}}>
+      <div className="skel" style={{width:70,height:22,borderRadius:100}}/>
+      <div className="skel" style={{width:50,height:22,borderRadius:100}}/>
+    </div>
+    <div className="skel" style={{width:"80%",height:20,borderRadius:8,marginBottom:8}}/>
+    <div className="skel" style={{width:"50%",height:14,borderRadius:6,marginBottom:12}}/>
+    <div className="skel" style={{width:"100%",height:12,borderRadius:6,marginBottom:6}}/>
+    <div className="skel" style={{width:"60%",height:12,borderRadius:6}}/>
+  </div>
+);
+
 const SolIc = () => (
   <svg width="18" height="14" viewBox="0 0 508 398" fill="none"><path d="M81.3 318.2c3-3 7-4.7 11.3-4.7h401.5c7.1 0 10.7 8.6 5.7 13.6l-79.9 79.2c-3 3-7 4.7-11.3 4.7H7.1c-7.1 0-10.7-8.6-5.7-13.6l79.9-79.2z" fill="url(#sa)"/><path d="M81.3 4.7c3.1-3 7.1-4.7 11.3-4.7h401.5c7.1 0 10.7 8.6 5.7 13.6l-79.9 79.2c-3 3-7 4.7-11.3 4.7H7.1c-7.1 0-10.7-8.6-5.7-13.6L81.3 4.7z" fill="url(#sb)"/><path d="M426.7 160.4c-3-3-7-4.7-11.3-4.7H13.9c-7.1 0-10.7 8.6-5.7 13.6l79.9 79.2c3 3 7 4.7 11.3 4.7h401.5c7.1 0 10.7-8.6 5.7-13.6l-79.9-79.2z" fill="url(#sc)"/><defs><linearGradient id="sa" x1="462" y1="430" x2="109" y2="-40" gradientUnits="userSpaceOnUse"><stop stopColor="#00FFA3"/><stop offset="1" stopColor="#DC1FFF"/></linearGradient><linearGradient id="sb" x1="462" y1="430" x2="109" y2="-40" gradientUnits="userSpaceOnUse"><stop stopColor="#00FFA3"/><stop offset="1" stopColor="#DC1FFF"/></linearGradient><linearGradient id="sc" x1="462" y1="430" x2="109" y2="-40" gradientUnits="userSpaceOnUse"><stop stopColor="#00FFA3"/><stop offset="1" stopColor="#DC1FFF"/></linearGradient></defs></svg>
 );
@@ -224,6 +237,7 @@ function HostCodeDisplay({ ev, onClose, onCopy }) {
 // ════════════════════════════════════════
 export default function App() {
   const [ready, setReady] = useState(false);
+  const [eventsLoading, setEventsLoading] = useState(true);
   const [view, setView] = useState("home");
   const [events, setEvents] = useState([]);
   const [user, setUser] = useState(null);
@@ -316,10 +330,12 @@ export default function App() {
         if (evs && evs.length > 0) setEvents(evs);
         else setEvents(loadState("events", null) || []);
         refreshAttendeeCounts();
-      }).catch(() => setEvents(loadState("events", null) || []));
+        setEventsLoading(false);
+      }).catch(() => { setEvents(loadState("events", null) || []); setEventsLoading(false); });
     } else {
       // No Supabase: load everything from localStorage
       setEvents(loadState("events", null) || []);
+      setEventsLoading(false);
       setUser(loadState("user", null));
       setBmarks(loadState("bmarks", []));
       setRsvps(loadState("rsvps", []));
@@ -693,10 +709,10 @@ export default function App() {
 
   // ── Field ──
   const Fld = ({ l, req, err, children }) => (
-    <div style={{display:"flex",flexDirection:"column",gap:4}}>
-      <label className="fld-label">{l}{req && <span style={{color:"var(--accent)"}}>*</span>}</label>
-      {children}
-      {err && <span style={{fontSize:11,color:"#BF360C",fontWeight:600}}>{err}</span>}
+    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+      <label className="fld-label">{l}{req && <span style={{color:"var(--accent)",marginLeft:2}}> *</span>}</label>
+      <div style={{position:"relative"}}>{children}{err && <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"#DC2626"}}>⚠</div>}</div>
+      {err && <span role="alert" style={{fontSize:12,color:"#DC2626",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>⚠ {err}</span>}
     </div>
   );
 
@@ -756,8 +772,8 @@ export default function App() {
     const handleClose = () => { formDraftRef.current = null; onClose(); };
     return (<>
       <div className="overlay" onClick={handleClose}/>
-      <div className="modal">
-        <div className="mh"><h2 className="mt">{isE ? "Edit" : "Submit Side Event"}</h2><button className="ib" onClick={handleClose}>✕</button></div>
+      <div className="modal" role="dialog">
+        <div className="mh"><h2 className="mt">{isE ? "Edit" : "Submit Side Event"}</h2><button className="ib" aria-label="Close" onClick={handleClose}>✕</button></div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           <Fld l="Banner image" err={null}>
             <label style={{position:"relative",borderRadius:16,overflow:"hidden",border:`2px dashed ${f.banner?"var(--accent2)":"var(--border)"}`,background:f.banner?"transparent":"var(--bg)",height:f.banner?120:72,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .25s"}}>
@@ -975,11 +991,11 @@ export default function App() {
       <div className="overlay" onClick={() => setSel(null)}/>
       <div className="modal" style={{padding:0}}>
         <div className="mh" style={{borderBottom:"1px solid var(--border)",padding:"13px 18px"}}>
-          <button className="ib" onClick={() => setSel(null)}>←</button>
+          <button className="ib" aria-label="Close" onClick={() => setSel(null)}>←</button>
           <div style={{display:"flex",gap:5}}>
-            {mine && <><button className="ib" onClick={() => { setSel(null); setEditing(ev); }}>✎</button><button className="ib" onClick={() => delEv(ev.id)} style={{color:"#BF360C"}}>🗑</button></>}
-            <button className="ib" onClick={() => shareEv(ev)}>↗</button>
-            <button className="ib" onClick={() => togBm(ev.id)} style={{color:saved?"#F9AB00":"var(--text)"}}>{saved ? "★" : "☆"}</button>
+            {mine && <><button className="ib" aria-label="Edit event" onClick={() => { setSel(null); setEditing(ev); }}>✎</button><button className="ib" aria-label="Delete event" onClick={() => delEv(ev.id)} style={{color:"#BF360C"}}>🗑</button></>}
+            <button className="ib" aria-label="Share event" onClick={() => shareEv(ev)}>↗</button>
+            <button className="ib" aria-label={saved?"Remove bookmark":"Save event"} onClick={() => togBm(ev.id)} style={{color:saved?"#F9AB00":"var(--text)"}}>{saved ? "★" : "☆"}</button>
           </div>
         </div>
         <div style={{padding:"18px 20px 32px"}}>
@@ -1869,7 +1885,7 @@ export default function App() {
       <div className="overlay" onClick={() => setFriendView(null)}/>
       <div className="modal" style={{padding:0}}>
         <div className="mh" style={{padding:"13px 16px",borderBottom:"1px solid var(--border)"}}>
-          <button className="ib" onClick={() => setFriendView(null)}>←</button>
+          <button className="ib" aria-label="Close" onClick={() => setFriendView(null)}>←</button>
           <div style={{display:"flex",gap:6}}>
             {isFrFriend && <button className="ib" onClick={() => togVip(fr.handle)} style={{color:vips.includes(fr.handle)?"#F9AB00":"var(--muted)",fontSize:16}} title="Must meet">{vips.includes(fr.handle)?"⭐":"☆"}</button>}
             {isFrFriend ? <button className="ib-sm" onClick={() => { removeFriend(fr); setFriendView(null); }} style={{color:"#BF360C",fontSize:12}}>Remove</button>
@@ -2065,7 +2081,7 @@ export default function App() {
           --ease:cubic-bezier(.16,1,.3,1);--dur:.3s;
         }
         .dark{
-          --bg:#0c0c14;--bg2:#10101a;--surface:#181824;--surface2:#22222e;--heading:#f0ede8;--text:#c8c4be;--muted:#8a8695;--border:#2a2836;
+          --bg:#0c0c14;--bg2:#12121e;--surface:#1a1a28;--surface2:#242430;--heading:#f0ede8;--text:#ccc8c2;--muted:#a8a4b0;--border:#38364a;
           --glow-p:rgba(153,69,255,.3);--glow-g:rgba(20,241,149,.2);
           --sh-sm:0 1px 3px rgba(0,0,0,.25),0 2px 8px rgba(0,0,0,.2);
           --sh-md:0 2px 8px rgba(0,0,0,.25),0 8px 28px rgba(0,0,0,.25);
@@ -2080,16 +2096,17 @@ export default function App() {
         .dark .btn-outline:hover{background:var(--surface2);border-color:var(--accent);color:var(--text);}
         .dark .ib{background:var(--surface);border-color:var(--border);color:var(--text);}
         .dark .ev-card{background-image:none;}
-        .dark .sbar input::placeholder,.dark .field::placeholder{color:#5a5468;}
+        .dark .sbar input::placeholder,.dark .field::placeholder{color:#706880;}
         .dark .card-desc{color:var(--muted);}
         .dark .host-code-char{background:var(--surface2);box-shadow:var(--sh-md);}
         .dark .lb-row:nth-child(1){background:linear-gradient(90deg,rgba(249,171,0,.08),transparent 60%);}
         .dark .lb-row:nth-child(1)::after{background:linear-gradient(90deg,transparent,rgba(249,171,0,.08),transparent);}
-        .dark .modal{background:var(--bg2);}
+        .dark .modal{background:#1a1a2a;}
         .dark .ticket{background:var(--surface);}
         .dark .info-cell{background:var(--bg);border-color:var(--border);}
         .dark .quest-popup{background:linear-gradient(145deg,#181824,#1e1245,#0a2a1a);}
         *{box-sizing:border-box;margin:0;padding:0;}
+        .skel{background:linear-gradient(90deg,var(--surface2) 25%,var(--border) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.5s ease infinite;}
         html{background:var(--bg);}
         .root{min-height:100vh;background:var(--bg);font-family:var(--f);color:var(--text);max-width:860px;margin:0 auto;position:relative;padding-bottom:90px;overflow-x:hidden;}
         .root::before{content:'';position:fixed;top:-40%;left:-40%;width:180%;height:180%;background:
@@ -2166,6 +2183,7 @@ export default function App() {
         .field:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 4px rgba(153,69,255,.06),0 4px 16px rgba(153,69,255,.04);}
         .field::placeholder{color:#a09a90;} select.field{appearance:none;padding-right:36px;}
         textarea.field{resize:vertical;min-height:80px;line-height:1.5;}
+        .field-error{border-color:#DC2626!important;box-shadow:0 0 0 3px rgba(220,38,38,.1)!important;}
         .fld-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--fm);}
 
         /* ═══ BUTTONS ═══ */
@@ -2363,6 +2381,14 @@ export default function App() {
         .verified-banner{text-align:center;padding:16px;background:linear-gradient(135deg,rgba(153,69,255,.04),rgba(20,241,149,.06));border:1.5px solid rgba(20,241,149,.2);border-radius:18px;font-size:16px;font-weight:700;color:#0A8F5A;font-family:var(--fd);}
         .checkin-done{padding:28px;}
         .checkin-done-icon{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#14F195,#0A8F5A);color:white;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;margin:0 auto;box-shadow:0 4px 24px rgba(10,143,90,.3),0 0 48px rgba(20,241,149,.15);animation:countPop .5s cubic-bezier(.16,1,.3,1);}
+
+        /* ═══ ACCESSIBILITY ═══ */
+        @media(prefers-reduced-motion:reduce){
+          *,.ev-card,.btn-glow,.btn-checkin,.fab,.quest-popup,.checkin-done-icon,.skel{animation:none!important;transition-duration:0.01ms!important;}
+          .root::before{animation:none!important;}
+          .pulse-dot{animation:none!important;}
+        }
+        .modal{role:dialog;}
       `}</style>
       <Toasts toasts={toasts}/>
       {questPop && <div className="quest-popup"><div style={{fontSize:44,marginBottom:8,animation:"wiggle .6s ease .2s both,float 2s ease-in-out .8s infinite"}}>{questPop.icon}</div><div style={{fontSize:18,fontWeight:800,letterSpacing:"-.2px",fontFamily:"var(--fd)",animation:"fadeUp .3s .15s both"}}>Quest Complete!</div><div style={{fontSize:14,fontWeight:600,opacity:.7,marginTop:3,animation:"fadeUp .3s .2s both"}}>{questPop.title}</div><div style={{fontSize:16,color:"#14F195",fontWeight:800,fontFamily:"var(--fm)",marginTop:10,background:"rgba(20,241,149,.12)",padding:"6px 18px",borderRadius:100,display:"inline-block",border:"1px solid rgba(20,241,149,.2)",animation:"scaleIn .4s .3s both"}}>+{questPop.xp} XP</div></div>}
@@ -2473,6 +2499,7 @@ export default function App() {
                 </div>;
             })()
             : layout === "calendar" ? renderCalendar()
+            : eventsLoading ? <div style={{display:"flex",flexDirection:"column",gap:16}}>{[0,1,2].map(i => <SkeletonCard key={i}/>)}</div>
             : sortedEvs.length === 0 ? <div className="empty-msg">🔍<br/><br/><strong style={{fontSize:18}}>No events found</strong><br/>Try adjusting your filters or create one with +</div>
               : layout === "grid" ? <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:16}}>{sortedEvs.map((ev,i) => renderCard(ev,i,false))}</div>
               : <div>{Object.keys(grouped).sort().map(date => <div key={date}><div className="dh">{dl(date)}<span style={{fontSize:10,background:"var(--surface)",padding:"3px 9px",borderRadius:100,border:"1px solid var(--border)"}}>{grouped[date].length}</span></div><div style={{display:"flex",flexDirection:"column",gap:14}}>{grouped[date].map((ev,i) => renderCard(ev,i,true))}</div></div>)}</div>}
@@ -2500,8 +2527,8 @@ export default function App() {
       {showHostCode && <HostCodeDisplay ev={showHostCode} onClose={() => setShowHostCode(null)} onCopy={async (code) => { const ok = await copyText(code); toast(ok?"Code copied!":"Failed","info"); }}/>}
       {showPrivacy && (<>
         <div className="overlay" onClick={() => setShowPrivacy(false)}/>
-        <div className="modal">
-          <div className="mh"><h2 className="mt">Privacy</h2><button className="ib" onClick={() => setShowPrivacy(false)}>✕</button></div>
+        <div className="modal" role="dialog">
+          <div className="mh"><h2 className="mt">Privacy</h2><button className="ib" aria-label="Close" onClick={() => setShowPrivacy(false)}>✕</button></div>
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
             <div className="incog-bar">
               <span>{privacy.profilePublic ? "👁" : "🔒"}</span>
