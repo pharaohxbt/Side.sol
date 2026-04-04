@@ -245,6 +245,7 @@ export default function App() {
   const [showSubmit, setShowSubmit] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showSort, setShowSort] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const sortRef = useRef(null);
   useEffect(() => { if (!showSort) return; const h = (e) => { if (sortRef.current && !sortRef.current.contains(e.target)) setShowSort(false); }; document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h); }, [showSort]);
   const [af, setAf] = useState({ email: "", name: "" });
@@ -545,6 +546,16 @@ export default function App() {
     if (fresh.length > 0) {
       const q = QUESTS.find(qq => qq.id === fresh[0]);
       if (q) { toast(`Quest complete: ${q.icon} ${q.title} (+${q.xp} XP)`, "xp"); setQuestPop(q); setTimeout(() => setQuestPop(null), 3000); }
+    } else {
+      // Show hint for next closest quest
+      const nextQuest = QUESTS.find(q => !newDone.includes(q.id));
+      if (nextQuest) {
+        setTimeout(() => {
+          if (nextQuest.id === "q1" && newCI.length === 0) toast(`${nextQuest.icon} Check in at an event to earn ${nextQuest.xp} XP`, "info");
+          else if (nextQuest.id === "q2") toast(`${nextQuest.icon} ${newCI.length}/5 check-ins for Social Butterfly (+${nextQuest.xp} XP)`, "info");
+          else if (nextQuest.id === "q9") toast(`${nextQuest.icon} ${newCI.length}/8 check-ins for Whale (+${nextQuest.xp} XP)`, "info");
+        }, 1500);
+      }
     }
   }, [events, completedQuests, toast]);
 
@@ -1147,7 +1158,7 @@ export default function App() {
 
   // ── Quests View ──
   const renderQuests = () => {
-    const lb = user ? [{name:user.name,xp:totalXP,handle:user.handle,pfp:user.pfp}] : [];
+    const lb = leaderboard.length > 0 ? leaderboard : (user ? [{name:user.name,xp:totalXP,handle:user.handle,pfp:user.pfp}] : []);
     const myRank = user ? lb.findIndex(l => l.handle === user.handle) + 1 : null;
     const progress = nextLvl ? Math.min(100,((totalXP-level.xp)/(nextLvl.xp-level.xp))*100) : 100;
 
@@ -1390,7 +1401,7 @@ export default function App() {
         <p className="vs">Find the people you want to meet</p>
 
         <div className="tab-bar" style={{marginBottom:16}}>
-          {[{id:"people",l:"👥 People"},{id:"overlap",l:"📍 Overlap"},{id:"notable",l:"⭐ Notable"}].map(t => (
+          {[{id:"people",l:"👥 People"},{id:"overlap",l:"📍 Overlap"}].map(t => (
             <button key={t.id} className={`tab ${friendsTab===t.id?"on":""}`} onClick={() => setFriendsTab(t.id)}>{t.l}</button>
           ))}
         </div>
@@ -1543,7 +1554,7 @@ export default function App() {
             </div>
           </>}
 
-          {friends.length === 0 && suggestedByOverlap.length === 0 && <div className="empty-msg">👥<br/><br/><strong>No friends yet</strong><br/>Add friends by their handle or browse Notable people</div>}
+          {friends.length === 0 && suggestedByOverlap.length === 0 && <div className="empty-msg">👥<br/><br/><strong>No friends yet</strong><br/>Add friends by their X handle above</div>}
         </>}
 
         {/* ═══ OVERLAP TAB ═══ */}
@@ -1642,6 +1653,38 @@ export default function App() {
   const [eventAttendees, setEventAttendees] = useState([]);
   const [eventPendingUsers, setEventPendingUsers] = useState([]);
   const [globalActivity, setGlobalActivity] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+
+  // Fetch leaderboard from all profiles
+  useEffect(() => {
+    if (!hasSupabase()) return;
+    (async () => {
+      try {
+        const supaUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supaKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        let token = supaKey;
+        try { const sk = `sb-${new URL(supaUrl).hostname.split('.')[0]}-auth-token`; const st = JSON.parse(localStorage.getItem(sk)||"{}"); if(st?.access_token) token=st.access_token; } catch(e){}
+        const res = await fetch(`${supaUrl}/rest/v1/profiles?select=name,handle,pfp,rsvps_data,checkins_data`, {
+          headers: {"apikey":supaKey,"Authorization":`Bearer ${token}`}
+        });
+        if (res.ok) {
+          const profiles = await res.json();
+          const board = profiles.map(p => {
+            const ci = p.checkins_data || [];
+            const rv = p.rsvps_data || [];
+            let cc = 0; const done = [];
+            for (const q of QUESTS) {
+              if (q.id === "q10") { if (q.check(ci, events, cc, rv)) done.push(q.id); }
+              else { if (q.check(ci, events, cc, rv)) { done.push(q.id); cc++; } }
+            }
+            const xp = QUESTS.filter(q => done.includes(q.id)).reduce((s,q) => s + q.xp, 0);
+            return { name: p.name, handle: p.handle, pfp: p.pfp, xp };
+          }).filter(p => p.xp > 0).sort((a,b) => b.xp - a.xp);
+          setLeaderboard(board);
+        }
+      } catch(e) {}
+    })();
+  }, [events]);
   const [attendeeCounts, setAttendeeCounts] = useState({}); // {eventId: count}
 
   // Fetch real attendee counts from all profiles
@@ -2359,9 +2402,14 @@ export default function App() {
               </div>
               <div className="scr" style={{gap:4,flexShrink:0,maxWidth:"55%"}}>{CONFS.map(c => <button key={c.id} onClick={() => { setConf(c.id); setCatF("All"); setDateF("All"); }} style={{padding:"5px 12px",borderRadius:100,border:conf===c.id?"none":"1px solid var(--border)",background:conf===c.id?"var(--dark)":"var(--surface)",color:conf===c.id?"white":"var(--text)",cursor:"pointer",fontFamily:"var(--f)",fontSize:11,fontWeight:conf===c.id?700:500,whiteSpace:"nowrap",transition:"all .2s",display:"flex",alignItems:"center",gap:4,boxShadow:conf===c.id?"0 2px 8px rgba(0,0,0,.1)":"none"}}><span style={{fontSize:12}}>{c.emoji}</span>{c.short}</button>)}</div>
             </div>
-            <div className="sbar" style={{marginBottom:7,padding:"3px 3px 3px 14px"}}><span style={{color:"var(--muted)",fontSize:13}}>🔍</span><input placeholder="Search events, hosts..." value={search} onChange={e => setSearch(e.target.value)} style={{padding:"7px 0"}}/>{search && <button className="ib-sm" onClick={() => setSearch("")}>✕</button>}</div>
-            <div className="scr" style={{marginBottom:4}}>{["All",...Object.keys(CATS)].map(c => <button key={c} className={`tag ${catF===c?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setCatF(c)}>{c!=="All"?(CATS[c]?.em+" "):""}{c}</button>)}</div>
-            <div className="scr" style={{marginBottom:6}}><button className={`tag ${dateF==="All"?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setDateF("All")}>All days</button>{uDates.map(d => <button key={d} className={`tag ${dateF===d?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setDateF(d)}>{fd(d)}</button>)}</div>
+            <div style={{display:"flex",gap:6,marginBottom:8}}>
+              <div className="sbar" style={{flex:1,padding:"3px 3px 3px 14px"}}><span style={{color:"var(--muted)",fontSize:13}}>🔍</span><input placeholder="Search events, hosts..." value={search} onChange={e => setSearch(e.target.value)} style={{padding:"7px 0"}}/>{search && <button className="ib-sm" onClick={() => setSearch("")}>✕</button>}</div>
+              <button className="ib" onClick={() => setShowFilters(!showFilters)} style={{flexShrink:0,fontSize:13,background:showFilters||(catF!=="All"||dateF!=="All")?"var(--accent)":"var(--surface)",color:showFilters||(catF!=="All"||dateF!=="All")?"white":"var(--text)",borderColor:showFilters?"var(--accent)":"var(--border)"}}>☰</button>
+            </div>
+            {showFilters && <>
+              <div className="scr" style={{marginBottom:4}}>{["All",...Object.keys(CATS)].map(c => <button key={c} className={`tag ${catF===c?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setCatF(c)}>{c!=="All"?(CATS[c]?.em+" "):""}{c}</button>)}</div>
+              <div className="scr" style={{marginBottom:6}}><button className={`tag ${dateF==="All"?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setDateF("All")}>All days</button>{uDates.map(d => <button key={d} className={`tag ${dateF===d?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setDateF(d)}>{fd(d)}</button>)}</div>
+            </>}
 
             {/* ═══ FRIENDS GOING — Surface the killer feature ═══ */}
             {user && friends.length > 0 && (() => {
