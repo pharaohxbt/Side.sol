@@ -71,7 +71,7 @@ const QUESTS = [
   {id:"q9",title:"Whale",desc:"Check in to 8+ events",icon:"🐋",xp:500,check:(ci)=>ci.length>=8},
   {id:"q10",title:"Legend",desc:"Complete 8 other quests",icon:"💎",xp:1000,check:(ci,evs,cc)=>cc>=8},
 ];
-const LEVELS=[{n:"Lurker",xp:0},{n:"Attendee",xp:100},{n:"Regular",xp:300},{n:"Builder",xp:600},{n:"Degen",xp:1000},{n:"OG",xp:1500},{n:"Legend",xp:2500},{n:"Solana God",xp:4000}];
+const LEVELS=[{n:"Explorer",xp:0},{n:"Attendee",xp:100},{n:"Regular",xp:300},{n:"Builder",xp:600},{n:"Degen",xp:1000},{n:"OG",xp:1500},{n:"Legend",xp:2500},{n:"Solana God",xp:4000}];
 const getLevel=(xp)=>{let l=LEVELS[0];for(const lv of LEVELS)if(xp>=lv.xp)l=lv;return l;};
 const getNext=(xp)=>{for(const lv of LEVELS)if(xp<lv.xp)return lv;return null;};
 
@@ -804,11 +804,11 @@ export default function App() {
             <div><span style={{fontSize:13,fontWeight:600}}>Luma Event</span><p style={{fontSize:11,color:"var(--muted)",marginTop:1}}>Registration handled via Luma</p></div>
           </div>
           <div className="r2">
-            <Fld l="Category" req><select className="field" value={f.cat} onChange={e=>sF({...f,cat:e.target.value})}>{Object.keys(CATS).map(c=><option key={c}>{c}</option>)}</select></Fld>
+            <Fld l="Category" req><select className="field" value={f.cat} onChange={e=>sF({...f,cat:e.target.value})}>{Object.keys(CATS).map(c=><option key={c} value={c}>{CATS[c].em} {c}</option>)}</select></Fld>
             <Fld l="Hosted by" req err={errs.host}><input className="field" placeholder="Team / person" value={f.host} onChange={e=>sF({...f,host:e.target.value})}/></Fld>
           </div>
           <div className="r2">
-            <Fld l="Date" req err={errs.date}><input className="field" type="date" value={f.date} onChange={e=>sF({...f,date:e.target.value})}/></Fld>
+            <Fld l="Date" req err={errs.date}><input className="field" type="date" placeholder="Select date" value={f.date} onChange={e=>sF({...f,date:e.target.value})} style={{colorScheme:dark?"dark":"light"}}/></Fld>
             <Fld l="Time"><input className="field" placeholder="6 PM – 10 PM" value={f.time} onChange={e=>sF({...f,time:e.target.value})}/></Fld>
           </div>
           <Fld l="Location" req err={errs.loc}><input className="field" placeholder="Venue, address" value={f.loc} onChange={e=>sF({...f,loc:e.target.value})}/></Fld>
@@ -1331,13 +1331,13 @@ export default function App() {
 
         {/* Your Stats */}
         {user && <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,margin:"16px 0"}}>
-          <div className="stat-box"><p className="stat-num" style={{color:"var(--accent)"}}>{rsvps.length}</p><p className="stat-label">Your RSVPs</p></div>
+          <div className="stat-box"><p className="stat-num" style={{color:"var(--accent)"}}>{rsvps.length}</p><p className="stat-label">Events</p></div>
           <div className="stat-box"><p className="stat-num" style={{color:"var(--accent2)"}}>{checkins.length}</p><p className="stat-label">Check-ins</p></div>
-          <div className="stat-box"><p className="stat-num">{completedQuests.length}</p><p className="stat-label">Quests</p></div>
+          <div className="stat-box"><p className="stat-num">{completedQuests.length}<span style={{fontSize:12,color:"var(--muted)"}}>/11</span></p><p className="stat-label">Quests</p></div>
         </div>}
 
         {/* Activity Feed + Trending side by side on desktop, stacked on mobile */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:20,marginTop:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,marginTop:14}}>
           {/* Activity Feed — primary content */}
           <div>
             <p className="section-label">Activity Feed</p>
@@ -1426,13 +1426,11 @@ export default function App() {
 
         {/* ═══ PEOPLE TAB ═══ */}
         {friendsTab === "people" && <>
-          <div style={{display:"flex",gap:8,marginBottom:16}}>
-            <div className="sbar" style={{flex:1}}>
-              <span style={{color:"var(--muted)",fontFamily:"var(--fm)",fontSize:14}}>@</span>
-              <input placeholder="Add by handle..." value={addFQ} onChange={e => setAddFQ(e.target.value)}
-                onKeyDown={e => { if(e.key==="Enter"&&addFQ) { addFriend(addFQ); setAddFQ(""); } }}/>
-            </div>
-            <button className="btn-sm" onClick={() => { if(addFQ) { addFriend(addFQ); setAddFQ(""); } }} style={{padding:"10px 20px"}}>Add</button>
+          <div className="sbar" style={{marginBottom:16}}>
+            <span style={{color:"var(--muted)",fontFamily:"var(--fm)",fontSize:14}}>@</span>
+            <input placeholder="Add friend by handle..." value={addFQ} onChange={e => setAddFQ(e.target.value)}
+              onKeyDown={e => { if(e.key==="Enter"&&addFQ) { addFriend(addFQ); setAddFQ(""); } }}/>
+            {addFQ && <button className="btn-sm" onClick={() => { addFriend(addFQ); setAddFQ(""); }} style={{padding:"8px 18px",flexShrink:0}}>Add</button>}
           </div>
 
           {/* Incoming Friend Requests */}
@@ -1527,7 +1525,7 @@ export default function App() {
                     <Avatar name={fr.name} s={38} bg={uc(fr.handle)} pfp={fr.pfp}/>
                     <div style={{flex:1}}>
                       <p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>{fr.name}{fr.pending && <span style={{fontSize:9,marginLeft:6,color:"var(--muted)",background:"var(--surface2)",padding:"2px 7px",borderRadius:100,fontWeight:600,fontFamily:"var(--fm)"}}>pending</span>}</p>
-                      <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{fr.pending ? `${fr.handle} — will link when they join` : `${fr.role || fr.handle} · `}{!fr.pending && <span style={{color:"var(--accent)",fontWeight:600}}>{frE.length} event{frE.length!==1?"s":""}</span>}</p>
+                      <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{fr.pending ? `${fr.handle} — will link when they join` : <>{fr.role && <span style={{color:"var(--text)",fontWeight:500}}>{fr.role} · </span>}{fr.handle} · </>}{!fr.pending && <span style={{color:"var(--accent)",fontWeight:600}}>{frE.length} event{frE.length!==1?"s":""}</span>}</p>
                     </div>
                     <div style={{display:"flex",gap:4}}>
                       <button className="ib-sm" onClick={e => { e.stopPropagation(); togVip(fr.handle); }} style={{color:isVip?"#F9AB00":"var(--muted)",fontSize:14}} title="Must meet">{isVip ? "⭐" : "☆"}</button>
@@ -2038,7 +2036,7 @@ export default function App() {
         </div>
 
         <div className="tab-bar">
-          {[{id:"quests",l:"⚡ Quests"},{id:"saved",l:"★ Saved"},{id:"verified",l:"✓ Verified"},{id:"mine",l:"📝 Mine"}].map(t => (
+          {[{id:"quests",l:"⚡ Quests"},{id:"saved",l:"⭐ Saved"},{id:"verified",l:"✅ Verified"},{id:"mine",l:"📝 Mine"}].map(t => (
             <button key={t.id} className={`tab ${profTab===t.id?"on":""}`} onClick={() => setProfTab(t.id)}>{t.l}</button>
           ))}
         </div>
@@ -2357,7 +2355,7 @@ export default function App() {
         .stat-box{background:var(--surface);border-radius:16px;padding:14px 12px;text-align:center;border:1px solid var(--border);box-shadow:var(--sh-sm);transition:all .2s;}
         .stat-box:hover{box-shadow:var(--sh-md);transform:translateY(-2px);}
         .stat-num{font-size:22px;font-weight:800;font-family:var(--fm);animation:countPop .5s cubic-bezier(.16,1,.3,1) both;}
-        .stat-label{font-size:11px;color:var(--muted);margin-top:3px;}
+        .stat-label{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
         /* ═══ BOTTOM NAV ═══ */
         .bnav{position:fixed;bottom:0;left:0;right:0;max-width:860px;margin:0 auto;background:var(--nav-bg);backdrop-filter:blur(28px) saturate(1.5);-webkit-backdrop-filter:blur(28px) saturate(1.5);border-top:1px solid var(--border);display:flex;padding:6px 16px calc(10px + env(safe-area-inset-bottom, 0px));gap:2px;z-index:50;}
@@ -2453,7 +2451,7 @@ export default function App() {
                       const cat = CATS[ev.cat] || CATS.Other;
                       const fg = fGoing(ev.id);
                       return (
-                        <div key={ev.id} onClick={() => setSel(ev)} style={{minWidth:200,flexShrink:0,background:"var(--surface)",borderRadius:14,padding:"12px 14px",border:`1px solid ${cat.ac}25`,cursor:"pointer",transition:"all .2s",boxShadow:"var(--sh-sm)"}}>
+                        <div key={ev.id} onClick={() => setSel(ev)} style={{minWidth:200,flexShrink:0,background:cbg(cat),borderRadius:14,padding:"12px 14px",borderLeft:`3px solid ${cat.ac}`,cursor:"pointer",transition:"all .2s",boxShadow:"var(--sh-sm)"}}>
                           <div style={{display:"flex",gap:4,marginBottom:4}}>
                             {fg.slice(0,4).map((fr,j) => <div key={fr.handle} style={{marginLeft:j?-6:0,zIndex:4-j}}><Avatar name={fr.name} s={20} bg={uc(fr.handle)} pfp={fr.pfp}/></div>)}
                           </div>
@@ -2470,8 +2468,8 @@ export default function App() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"2px 0 8px"}}>
               <span style={{fontSize:11,color:"var(--muted)",fontFamily:"var(--fm)"}}>{sortedEvs.length} event{sortedEvs.length!==1?"s":""}</span>
               <div style={{display:"flex",alignItems:"center",gap:2}}>
-                {[{id:"grid",icon:"⊞"},{id:"timeline",icon:"☰"},{id:"calendar",icon:"📅"},...(user&&rsvps.length>0?[{id:"schedule",icon:"🗓"}]:[])].map(v => (
-                  <button key={v.id} className="ib-sm" onClick={() => setLayout(v.id)} style={{opacity:layout===v.id?1:.45,background:layout===v.id?"var(--surface2)":"transparent",fontSize:14}}>{v.icon}</button>
+                {[{id:"grid",icon:"⊞",tip:"Grid"},{id:"timeline",icon:"☰",tip:"Timeline"},{id:"calendar",icon:"📅",tip:"Calendar"},...(user&&rsvps.length>0?[{id:"schedule",icon:"🗓",tip:"My Schedule"}]:[])].map(v => (
+                  <button key={v.id} className="ib-sm" onClick={() => setLayout(v.id)} title={v.tip} style={{opacity:layout===v.id?1:.45,background:layout===v.id?"var(--surface2)":"transparent",fontSize:14}}>{v.icon}</button>
                 ))}
                 <div style={{width:1,height:16,background:"var(--border)",margin:"0 3px"}}/>
                 <div style={{position:"relative"}} ref={sortRef}>
