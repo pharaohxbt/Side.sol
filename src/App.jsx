@@ -25,14 +25,14 @@ async function getAuth0() {
 // DATA
 // ════════════════════════════════════════
 const CATS = {
-  Party:{bg:"#E6F4EA",dbg:"#14261a",fg:"#1B7A3D",dfg:"#5CD88A",ac:"#34A853",em:"🎉"},
-  Hackathon:{bg:"#DEEEF8",dbg:"#141e28",fg:"#1A5FA0",dfg:"#6CB4F0",ac:"#4285F4",em:"💻"},
-  Meetup:{bg:"#FEF5D4",dbg:"#26200e",fg:"#A66D00",dfg:"#E8B84A",ac:"#F9AB00",em:"🤝"},
-  Workshop:{bg:"#F0E5F6",dbg:"#201828",fg:"#7B1FA2",dfg:"#C77DEE",ac:"#AB47BC",em:"🔧"},
-  Panel:{bg:"#DDF2EF",dbg:"#122420",fg:"#00695C",dfg:"#4DCDB8",ac:"#26A69A",em:"🎙️"},
-  "Demo Day":{bg:"#FDE8E0",dbg:"#281810",fg:"#BF360C",dfg:"#F08858",ac:"#FF7043",em:"🚀"},
-  Dinner:{bg:"#FCE4EC",dbg:"#281420",fg:"#AD1457",dfg:"#F06898",ac:"#EC407A",em:"🍽️"},
-  Other:{bg:"#ECEFF1",dbg:"#1a1c1e",fg:"#455A64",dfg:"#9AACB8",ac:"#78909C",em:"✨"},
+  Party:{bg:"#E6F4EA",dbg:"#1a3424",fg:"#1B7A3D",dfg:"#6EE89E",ac:"#34A853",em:"🎉"},
+  Hackathon:{bg:"#DEEEF8",dbg:"#1a2838",fg:"#1A5FA0",dfg:"#7CC0F5",ac:"#4285F4",em:"💻"},
+  Meetup:{bg:"#FEF5D4",dbg:"#302816",fg:"#A66D00",dfg:"#F0C44E",ac:"#F9AB00",em:"🤝"},
+  Workshop:{bg:"#F0E5F6",dbg:"#281e34",fg:"#7B1FA2",dfg:"#D08AF5",ac:"#AB47BC",em:"🔧"},
+  Panel:{bg:"#DDF2EF",dbg:"#182e2a",fg:"#00695C",dfg:"#5DD8C4",ac:"#26A69A",em:"🎙️"},
+  "Demo Day":{bg:"#FDE8E0",dbg:"#302018",fg:"#BF360C",dfg:"#F5956A",ac:"#FF7043",em:"🚀"},
+  Dinner:{bg:"#FCE4EC",dbg:"#301a28",fg:"#AD1457",dfg:"#F57AA8",ac:"#EC407A",em:"🍽️"},
+  Other:{bg:"#ECEFF1",dbg:"#222428",fg:"#455A64",dfg:"#A8B8C4",ac:"#78909C",em:"✨"},
 };
 
 const CONFS = [
@@ -164,7 +164,7 @@ function Toasts({ toasts }) {
         <div key={t.id} style={{
           padding:"13px 18px",borderRadius:16,fontWeight:700,fontSize:13.5,fontFamily:"var(--f)",
           background: t.type==="error"?"#FDE8E0" : t.type==="xp"?"linear-gradient(135deg,rgba(153,69,255,.08),rgba(20,241,149,.06))" : t.type==="info"?"#DEEEF8" : "#E6F4EA",
-          color: t.type==="error"?"#BF360C" : t.type==="xp"?"#7B3FCC" : t.type==="info"?"#1A5FA0" : "#1B7A3D",
+          color: t.type==="error"?"#B91C1C" : t.type==="xp"?"#7B3FCC" : t.type==="info"?"#0D4F8B" : "#166534",
           boxShadow:"0 8px 32px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.06)",animation:"toastIn .35s cubic-bezier(.16,1,.3,1)",
           border: t.type==="xp"?"1.5px solid rgba(153,69,255,.15)":t.type==="error"?"1.5px solid rgba(191,54,12,.12)":t.type==="info"?"1.5px solid rgba(26,95,160,.1)":"1.5px solid rgba(27,122,61,.1)",
           backdropFilter:"blur(12px)",display:"flex",alignItems:"center",gap:8
@@ -595,7 +595,7 @@ export default function App() {
       syncToSupabase({ rsvps_data: newRsvps });
       // Update local count immediately
       setAttendeeCounts(c => ({...c, [id]: Math.max(0, (c[id]||1) - 1)}));
-      toast("Left event");
+      toast("Left event", "info");
     } else {
       const ev = events.find(e => e.id === id);
       if (ev && ev.capacity && getAtt(id) >= ev.capacity) { toast("Event is full", "error"); return; }
@@ -603,7 +603,7 @@ export default function App() {
       setRsvps(newRsvps);
       syncToSupabase({ rsvps_data: newRsvps });
       setAttendeeCounts(c => ({...c, [id]: (c[id]||0) + 1}));
-      toast("Joined! Check in at the event for XP", "info");
+      toast("Joined! Check in at the event to earn XP", "info");
       setTimeout(() => checkQuests(checkins, newRsvps), 300);
     }
   };
@@ -755,12 +755,12 @@ export default function App() {
       if (hasSupabase()) {
         if (isE) {
           const updated = await db.updateEvent(initial.id, cleanData);
-          if (updated) setEvents(es => es.map(e => e.id === initial.id ? {...e,...updated} : e));
-          toast("Updated!");
+          if (updated) { setEvents(es => es.map(e => e.id === initial.id ? {...e,...updated} : e)); toast("Updated!"); }
+          else { toast("Failed to update event", "error"); return; }
         } else {
           const created = await db.createEvent({ ...cleanData, conf }, user?.supaId);
-          if (created) setEvents(es => [created, ...es]);
-          toast("Submitted!");
+          if (created) { setEvents(es => [created, ...es]); toast("Event created!"); }
+          else { toast("Failed to create event", "error"); return; }
         }
       } else {
         if (isE) { setEvents(es => es.map(e => e.id === initial.id ? {...e,...f} : e)); toast("Updated!"); }
@@ -821,10 +821,12 @@ export default function App() {
                 // Auto-extract event ID when a valid Luma URL is pasted
                 if (val.includes("luma.com/") || val.includes("lu.ma/")) {
                   sF(prev => ({...prev, lumaEventId: "", _lumaLoading: true}));
-                  fetch(`/api/luma-id?url=${encodeURIComponent(val)}`)
+                  const controller = new AbortController();
+                  const timeout = setTimeout(() => controller.abort(), 8000);
+                  fetch(`/api/luma-id?url=${encodeURIComponent(val)}`, {signal:controller.signal})
                     .then(r => r.json())
-                    .then(d => { if (d.eventId) sF(prev => ({...prev, lumaEventId: d.eventId, _lumaLoading: false})); else sF(prev => ({...prev, _lumaLoading: false})); })
-                    .catch(() => sF(prev => ({...prev, _lumaLoading: false})));
+                    .then(d => { clearTimeout(timeout); if (d.eventId) sF(prev => ({...prev, lumaEventId: d.eventId, _lumaLoading: false})); else sF(prev => ({...prev, _lumaLoading: false})); })
+                    .catch(() => { clearTimeout(timeout); sF(prev => ({...prev, _lumaLoading: false})); });
                 }
               }}/>
             </Fld>
@@ -1148,7 +1150,7 @@ export default function App() {
             <div style={{display:"flex",gap:8}}>
               {!going && !ev.luma?.includes("luma") && !ev.rsvp && <button className="btn-glow" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Join</button>}
               {!going && !ev.luma?.includes("luma") && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => { const np = [...pendingRequests, ev.id]; setPendingRequests(np); syncToSupabase({pending_requests_data:np}); toast("Request sent! The host will review it.", "info"); }}>🔒 Request</button>}
-              {!going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.7,cursor:"default"}}>Requested — Awaiting Approval</button>}
+              {!going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.6,cursor:"not-allowed",pointerEvents:"none"}}>Requested — Awaiting Approval</button>}
               {!going && ev.luma?.includes("luma") && <>
                 <button className="btn-glow" type="button" style={{flex:1,cursor:"pointer"}} onClick={() => {
                   // Find the working card button and click it, or create one at body level
@@ -1570,7 +1572,7 @@ export default function App() {
             </div>
           </>}
 
-          {friends.length === 0 && suggestedByOverlap.length === 0 && <div className="empty-msg">👥<br/><br/><strong>No friends yet</strong><br/>Add friends by their X handle above</div>}
+          {friends.length === 0 && suggestedByOverlap.length === 0 && <div className="empty-msg"><div style={{fontSize:40,marginBottom:8}}>👥</div><strong style={{fontSize:17}}>No friends yet</strong><p style={{marginTop:6,marginBottom:16}}>Add friends by their X handle to see which events they're attending</p><button className="btn-sm" onClick={() => document.querySelector('.sbar input')?.focus()} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"10px 24px"}}>Add a friend</button></div>}
         </>}
 
         {/* ═══ OVERLAP TAB ═══ */}
@@ -2040,8 +2042,8 @@ export default function App() {
         </div>
 
         {profTab === "quests" && renderQuests()}
-        {profTab === "saved" && (savedEvs.length === 0 ? <div className="empty-msg">⭐<br/><br/><strong>No saved events yet</strong><br/>Tap the star on any event to save it</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{savedEvs.map((ev,i) => renderCard(ev,i,true))}</div>)}
-        {profTab === "verified" && (verEvs.length === 0 ? <div className="empty-msg">📍<br/><br/><strong>No check-ins yet</strong><br/>RSVP to events, then check in at the venue to earn XP</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{verEvs.map((ev,i) => renderCard(ev,i,true))}</div>)}
+        {profTab === "saved" && (savedEvs.length === 0 ? <div className="empty-msg"><div style={{fontSize:40,marginBottom:8}}>⭐</div><strong style={{fontSize:17}}>No saved events yet</strong><p style={{marginTop:6,marginBottom:16}}>Tap the ☆ star on any event to save it for later</p><button className="btn-sm" onClick={() => setView("home")} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"10px 24px"}}>Browse events</button></div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{savedEvs.map((ev,i) => renderCard(ev,i,true))}</div>)}
+        {profTab === "verified" && (verEvs.length === 0 ? <div className="empty-msg"><div style={{fontSize:40,marginBottom:8}}>📍</div><strong style={{fontSize:17}}>No check-ins yet</strong><p style={{marginTop:6,marginBottom:16}}>RSVP to events, then check in at the venue to earn XP</p><button className="btn-sm" onClick={() => setView("home")} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"10px 24px"}}>Browse events</button></div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{verEvs.map((ev,i) => renderCard(ev,i,true))}</div>)}
         {profTab === "mine" && (myEvs.length === 0 ? <div className="empty-msg">📝<br/><br/><strong>No submitted events</strong><br/>Tap + to submit your own side event</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{myEvs.map((ev,i) => renderCard(ev,i,false))}</div>)}
 
         <button className="btn-outline" onClick={async () => { saveState("user", null); setUser(null); if (hasSupabase()) await db.signOut(); toast("Signed out"); }} style={{width:"100%",marginTop:24}}>Sign out</button>
@@ -2176,7 +2178,7 @@ export default function App() {
         .qrsvp{padding:8px 16px;border-radius:100px;font-size:12px;font-weight:700;min-height:36px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:var(--f);transition:all .2s;white-space:nowrap;}
         .qrsvp:hover{background:var(--accent);color:white;transform:scale(1.05);box-shadow:0 4px 16px rgba(153,69,255,.25);}
         .qrsvp:active{transform:scale(.95);}
-        .qrsvp.on{background:rgba(20,241,149,.1);color:#0A8F5A;border-color:rgba(20,241,149,.3);cursor:default;font-size:11px;padding:5px 12px;}
+        .qrsvp.on{background:rgba(20,241,149,.1);color:#0A8F5A;border-color:rgba(20,241,149,.3);cursor:default;font-size:11px;padding:5px 12px;pointer-events:none;}
 
         /* ═══ FORM FIELDS ═══ */
         .field{width:100%;padding:14px 18px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-family:var(--f);background:var(--surface);color:var(--text);outline:none;transition:all .3s cubic-bezier(.16,1,.3,1);}
@@ -2217,7 +2219,7 @@ export default function App() {
 
         /* ═══ MODALS ═══ */
         .overlay{position:fixed;inset:0;background:var(--overlay);z-index:100;animation:fadeIn .25s;backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);}
-        .modal{position:fixed;bottom:0;left:0;right:0;max-height:92vh;max-width:860px;margin:0 auto;background:var(--surface);border-radius:28px 28px 0 0;z-index:101;overflow-y:auto;animation:slideUp .5s cubic-bezier(.22,.68,0,1);padding:0 24px 48px;box-shadow:0 -8px 40px rgba(0,0,0,.1),0 -2px 8px rgba(0,0,0,.04);}
+        .modal{position:fixed;bottom:0;left:0;right:0;max-height:92vh;max-width:860px;margin:0 auto;background:var(--surface);border-radius:28px 28px 0 0;z-index:101;overflow-y:auto;animation:slideUp .5s cubic-bezier(.22,.68,0,1);padding:0 24px calc(48px + env(safe-area-inset-bottom, 0px));box-shadow:0 -8px 40px rgba(0,0,0,.1),0 -2px 8px rgba(0,0,0,.04);}
         .modal::before{content:'';display:block;width:36px;height:4px;background:var(--border);border-radius:100px;margin:14px auto 22px;transition:background .2s;}
         .modal:hover::before{background:var(--muted);}
         .mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:modalContent .4s .15s both;}
@@ -2259,7 +2261,7 @@ export default function App() {
 
         /* ═══ SECTION LABELS ═══ */
         .section-label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;font-family:var(--fm);}
-        .vt{font-size:32px;font-weight:800;letter-spacing:-.7px;font-family:var(--fd);line-height:1.1;} .vs{color:var(--muted);font-size:15px;margin-bottom:22px;line-height:1.5;}
+        .vt{font-size:32px;font-weight:800;letter-spacing:-.7px;font-family:var(--fd);line-height:1.1;} .vs{color:var(--muted);font-size:16px;margin-bottom:22px;line-height:1.5;}
 
         /* ═══ TIMELINE ═══ */
         .dh{font-size:12px;font-weight:700;color:var(--muted);margin:24px 0 10px;padding-bottom:10px;border-bottom:1.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-family:var(--fm);text-transform:uppercase;letter-spacing:.6px;}
@@ -2598,8 +2600,8 @@ export default function App() {
             <div style={{flex:1,height:1,background:"var(--border)"}}/> or <div style={{flex:1,height:1,background:"var(--border)"}}/>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <input className="field" placeholder="Display name" value={af.name} onChange={e => setAf({...af, name: e.target.value})}/>
-            <input className="field" placeholder="Email" type="email" value={af.email} onChange={e => setAf({...af, email: e.target.value})}/>
+            <input className="field" placeholder="Display name" autoComplete="name" value={af.name} onChange={e => setAf({...af, name: e.target.value})}/>
+            <input className="field" placeholder="Email" type="email" autoComplete="email" value={af.email} onChange={e => setAf({...af, email: e.target.value})}/>
             <button className="btn-glow" onClick={() => handleAuth("email")} style={{width:"100%",padding:"14px",fontSize:15}}>Continue with Email</button>
           </div>
         </div>
