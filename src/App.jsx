@@ -98,7 +98,7 @@ const fd = (d) => d ? new Date(d+"T12:00:00").toLocaleDateString("en-US",{weekda
 const dl = (d) => d ? new Date(d+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"}) : "";
 const gid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 const ACOLORS = ["#9945FF","#14F195","#F9AB00","#4285F4","#EC407A","#FF7043","#26A69A","#AB47BC"];
-const timeAgo = (ts) => { if (!ts) return ""; const s = Math.floor((Date.now() - new Date(ts).getTime()) / 1000); if (s < 60) return "just now"; if (s < 3600) return `${Math.floor(s/60)}m`; if (s < 86400) return `${Math.floor(s/3600)}h`; return `${Math.floor(s/86400)}d`; };
+const timeAgo = (ts) => { if (!ts) return ""; const d = new Date(ts); const s = Math.floor((Date.now() - d.getTime()) / 1000); if (s < 60) return "just now"; if (s < 3600) return `${Math.floor(s/60)}m ago`; if (s < 86400) return `${Math.floor(s/3600)}h ago`; if (s < 604800) return `${Math.floor(s/86400)}d ago`; return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); };
 const uc = (h) => { let n=0; for(let i=0;i<(h||"").length;i++) n+=h.charCodeAt(i); return ACOLORS[n%ACOLORS.length]; };
 
 const Avatar = ({name,s=32,bg,pfp}) => (
@@ -195,7 +195,7 @@ function PulseTicker({ activity, events }) {
       <div style={{flex:1,overflow:"hidden"}}>
         {activity.map((p,i) => (
           <div key={i} style={{display:i===ci?"flex":"none",animation:i===ci?"fadeSlide .4s ease":"none",alignItems:"center",gap:3,fontSize:12,whiteSpace:"nowrap"}}>
-            <strong>{p.u}</strong>&nbsp;{p.a}&nbsp;<em style={{color:"#14F195"}}>{p.e ? events.find(e=>e.id===p.e)?.title : p.q}</em>&nbsp;<span className="pulse-time">{timeAgo(p.ts)}{timeAgo(p.ts) && timeAgo(p.ts) !== "just now" ? " ago" : ""}</span>
+            <strong>{p.u}</strong>&nbsp;{p.a}&nbsp;<em style={{color:"#14F195"}}>{p.e ? events.find(e=>e.id===p.e)?.title : p.q}</em>&nbsp;<span className="pulse-time">{timeAgo(p.ts)}</span>
           </div>
         ))}
       </div>
@@ -789,9 +789,9 @@ export default function App() {
                   style={{position:"absolute",left:10,right:10,bottom:36,height:4,appearance:"auto",opacity:.7,zIndex:5,cursor:"pointer"}}
                 />
               </>) : (
-                <div style={{textAlign:"center",color:"var(--muted)",padding:12}}>
-                  <div style={{fontSize:24,marginBottom:4}}>🖼</div>
-                  <p style={{fontSize:12,fontWeight:600}}>Tap to upload a banner</p>
+                <div style={{textAlign:"center",color:"var(--muted)",padding:20}}>
+                  <div style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,rgba(153,69,255,.1),rgba(20,241,149,.08))",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px",fontSize:22}}>📸</div>
+                  <p style={{fontSize:13,fontWeight:700,color:"var(--heading)"}}>Add a banner image</p>
                   <p style={{fontSize:10,opacity:.6,marginTop:2}}>PNG, JPG · Max 500KB</p>
                 </div>
               )}
@@ -941,7 +941,7 @@ export default function App() {
               {vg.length > 0 && <span className="vip-badge">⭐ {vg[0].name}{vg.length > 1 ? ` +${vg.length-1}` : ""}</span>}
               {fg.length > 0 && (
                 <div style={{display:"flex",alignItems:"center",gap:4}}>
-                  <div style={{display:"flex"}}>{fg.slice(0,3).map((fr,j) => <div key={fr.handle} style={{marginLeft:j?-8:0,zIndex:3-j}}><Avatar name={fr.name} s={18} bg={uc(fr.handle)} pfp={fr.pfp}/></div>)}</div>
+                  <div style={{display:"flex"}}>{fg.slice(0,3).map((fr,j) => <div key={fr.handle} style={{marginLeft:j?-8:0,zIndex:3-j}}><Avatar name={fr.name} s={22} bg={uc(fr.handle)} pfp={fr.pfp}/></div>)}</div>
                   <span style={{fontSize:10.5,fontWeight:600,color:"var(--accent)"}}>{fg.length <= 2 ? fg.map(f=>f.name.split(" ")[0]).join(" & ") : `${fg.length} friends`}</span>
                 </div>
               )}
@@ -1229,7 +1229,7 @@ export default function App() {
               <div key={l.handle+i} className={`lb-row ${isMe ? "me" : ""}`}>
                 <span className="lb-rank">{i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`}</span>
                 <Avatar name={l.name} s={26} bg={uc(l.handle)} pfp={l.pfp}/>
-                <div style={{flex:1,minWidth:0}}><p className="lb-name">{l.name}{isMe ? " (you)" : ""}</p></div>
+                <div style={{flex:1,minWidth:0}}><p className="lb-name">{l.name}{isMe ? " (you)" : ""}</p><p style={{fontSize:10,color:"var(--muted)",marginTop:1}}>{l.evts||0} event{(l.evts||0)!==1?"s":""} · {l.quests||0} quest{(l.quests||0)!==1?"s":""}</p></div>
                 <div className="lb-xp"><span className="lb-lvl">{getLevel(l.xp).n}</span>{l.xp} XP</div>
               </div>
             );
@@ -1346,11 +1346,11 @@ export default function App() {
             ) : (
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {allActivity.slice(0,15).map((p,i) => (
-                  <div key={i} className="act-row" style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
+                  <div key={i} className="act-row" style={{animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`,borderLeft:`3px solid ${p.a==="created"?"var(--accent)":p.a.includes("RSVP")?"#14F195":"var(--border)"}`}}>
                     <Avatar name={p.u} s={30} bg={uc(p.u)} pfp={p.pfp}/>
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{fontSize:13,lineHeight:1.4}}><strong style={{fontFamily:"var(--fd)"}}>{p.u}</strong> {p.a} <em style={{color:"var(--accent)",fontStyle:"normal",fontWeight:700}}>{p.e ? events.find(e=>e.id===p.e)?.title : p.q}</em></p>
-                      <span style={{fontSize:10,color:"var(--muted)",fontFamily:"var(--fm)"}}>{timeAgo(p.ts)} {timeAgo(p.ts) && timeAgo(p.ts) !== "just now" ? "ago" : ""}</span>
+                      <span style={{fontSize:10,color:"var(--muted)",fontFamily:"var(--fm)"}}>{timeAgo(p.ts)}</span>
                     </div>
                   </div>
                 ))}
@@ -1698,7 +1698,7 @@ export default function App() {
               else { if (q.check(ci, events, cc, rv)) { done.push(q.id); cc++; } }
             }
             const xp = QUESTS.filter(q => done.includes(q.id)).reduce((s,q) => s + q.xp, 0);
-            return { name: p.name, handle: p.handle, pfp: p.pfp, xp };
+            return { name: p.name, handle: p.handle, pfp: p.pfp, xp, evts: rv.length, quests: done.length };
           }).filter(p => p.xp > 0).sort((a,b) => b.xp - a.xp);
           setLeaderboard(board);
         }
@@ -2016,15 +2016,15 @@ export default function App() {
                   <span className="prof-stat">{completedQuests.length}/{QUESTS.length} ⚡</span>
                 </div>
               </div>
-              <div style={{display:"flex",gap:6}}>
-                <button className="ib" onClick={async () => {
+              <div style={{display:"flex",gap:6,flexDirection:"column",alignItems:"flex-end"}}>
+                <button onClick={async () => {
                   const url = `${window.location.origin}?add=${encodeURIComponent(user.handle)}`;
                   const text = `Add me on SIDE.SOL! ${url}`;
                   if (navigator.share) { try { await navigator.share({title:"Add me on SIDE.SOL",text:user.handle,url}); return; } catch(e){} }
                   const ok = await copyText(text);
                   toast(ok ? "Profile link copied!" : "Copy failed", ok ? "success" : "error");
-                }} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.08)",color:"white",backdropFilter:"blur(4px)"}}>↗</button>
-                <button className="ib" onClick={() => setShowPrivacy(true)} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.08)",color:"white",backdropFilter:"blur(4px)"}}>🔒</button>
+                }} style={{background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.1)",color:"white",backdropFilter:"blur(4px)",borderRadius:100,padding:"6px 14px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"var(--f)",display:"flex",alignItems:"center",gap:5}}>↗ Share</button>
+                <button onClick={() => setShowPrivacy(true)} style={{background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.1)",color:"white",backdropFilter:"blur(4px)",borderRadius:100,padding:"6px 14px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"var(--f)",display:"flex",alignItems:"center",gap:5}}>🔒 Privacy</button>
               </div>
             </div>
           </div>
@@ -2160,7 +2160,7 @@ export default function App() {
         /* ═══ PILLS ═══ */
         .pill{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.15px;font-family:var(--f);white-space:nowrap;backdrop-filter:blur(4px);}
         .rsvp-pill{background:rgba(20,241,149,.1);color:#0A8F5A;border:1px solid rgba(20,241,149,.18);}
-        .going-pill{background:rgba(249,171,0,.1);color:#A66D00;border:1px solid rgba(249,171,0,.15);}
+        .going-pill{background:rgba(20,241,149,.12);color:#0A8F5A;border:1px solid rgba(20,241,149,.18);pointer-events:none;cursor:default;}
         .hot-pill{background:rgba(255,112,67,.1);color:#BF360C;border:1px solid rgba(255,112,67,.15);}
         .verified-pill{background:linear-gradient(135deg,rgba(153,69,255,.1),rgba(20,241,149,.08));color:#7B3FCC;border:1px solid rgba(153,69,255,.18);font-weight:800;}
 
@@ -2425,16 +2425,14 @@ export default function App() {
         {/* HOME */}
         {view === "home" && (
           <div className="anim-in">
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",margin:"14px 0 10px"}}>
-              <div>
-                <h1 style={{fontSize:24,fontWeight:900,letterSpacing:"-.6px",fontFamily:"var(--fd)",lineHeight:1.1}}>Discover <span style={{background:"linear-gradient(135deg,#9945FF,#6B2FD9,#14F195)",backgroundSize:"200% 100%",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",animation:"gradientFlow 5s linear infinite"}}>side events</span></h1>
-                <p style={{color:"var(--muted)",fontSize:12.5,marginTop:4,display:"flex",alignItems:"center",gap:5}}><span style={{width:6,height:6,borderRadius:"50%",background:"#14F195",flexShrink:0,animation:"pulseDot 2s ease infinite"}}/>{cd?.loc} · {cd?.dates}</p>
-              </div>
-              <div className="scr" style={{gap:4,flexShrink:0,maxWidth:"55%"}}>{CONFS.map(c => <button key={c.id} onClick={() => { setConf(c.id); setCatF("All"); setDateF("All"); }} style={{padding:"5px 12px",borderRadius:100,border:conf===c.id?"none":"1px solid var(--border)",background:conf===c.id?"var(--dark)":"var(--surface)",color:conf===c.id?"white":"var(--text)",cursor:"pointer",fontFamily:"var(--f)",fontSize:11,fontWeight:conf===c.id?700:500,whiteSpace:"nowrap",transition:"all .2s",display:"flex",alignItems:"center",gap:4,boxShadow:conf===c.id?"0 2px 8px rgba(0,0,0,.1)":"none"}}><span style={{fontSize:12}}>{c.emoji}</span>{c.short}</button>)}</div>
+            <div style={{margin:"14px 0 6px"}}>
+              <h1 style={{fontSize:24,fontWeight:900,letterSpacing:"-.6px",fontFamily:"var(--fd)",lineHeight:1.1}}>Discover <span style={{background:"linear-gradient(135deg,#9945FF,#6B2FD9,#14F195)",backgroundSize:"200% 100%",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",animation:"gradientFlow 5s linear infinite"}}>side events</span></h1>
+              <p style={{color:"var(--muted)",fontSize:12.5,marginTop:4,display:"flex",alignItems:"center",gap:5}}><span style={{width:6,height:6,borderRadius:"50%",background:"#14F195",flexShrink:0,animation:"pulseDot 2s ease infinite"}}/>{cd?.loc} · {cd?.dates}</p>
             </div>
+            <div className="scr" style={{gap:6,marginBottom:10}}>{CONFS.map(c => <button key={c.id} onClick={() => { setConf(c.id); setCatF("All"); setDateF("All"); }} style={{padding:"8px 16px",borderRadius:100,border:conf===c.id?"none":"1px solid var(--border)",background:conf===c.id?"var(--dark)":"var(--surface)",color:conf===c.id?"white":"var(--text)",cursor:"pointer",fontFamily:"var(--f)",fontSize:12,fontWeight:conf===c.id?700:500,whiteSpace:"nowrap",transition:"all .2s",display:"flex",alignItems:"center",gap:5,boxShadow:conf===c.id?"0 2px 8px rgba(0,0,0,.1)":"none"}}><span style={{fontSize:14}}>{c.emoji}</span>{c.short}</button>)}</div>
             <div style={{display:"flex",gap:6,marginBottom:8}}>
               <div className="sbar" style={{flex:1,padding:"3px 3px 3px 14px"}}><span style={{color:"var(--muted)",fontSize:13}}>🔍</span><input placeholder="Search events, hosts..." value={search} onChange={e => setSearch(e.target.value)} style={{padding:"7px 0"}}/>{search && <button className="ib-sm" onClick={() => setSearch("")}>✕</button>}</div>
-              <button className="ib" onClick={() => setShowFilters(!showFilters)} style={{flexShrink:0,fontSize:13,background:showFilters||(catF!=="All"||dateF!=="All")?"var(--accent)":"var(--surface)",color:showFilters||(catF!=="All"||dateF!=="All")?"white":"var(--text)",borderColor:showFilters?"var(--accent)":"var(--border)"}}>☰</button>
+              <button className="btn-sm" onClick={() => setShowFilters(!showFilters)} style={{flexShrink:0,fontSize:12,background:showFilters||(catF!=="All"||dateF!=="All")?"var(--accent)":"var(--dark)",padding:"10px 16px"}}>Filter{(catF!=="All"||dateF!=="All")?" ✓":""}</button>
             </div>
             {showFilters && <>
               <div className="scr" style={{marginBottom:4}}>{["All",...Object.keys(CATS)].map(c => <button key={c} className={`tag ${catF===c?"on":""}`} style={{padding:"5px 12px",fontSize:11.5}} onClick={() => setCatF(c)}>{c!=="All"?(CATS[c]?.em+" "):""}{c}</button>)}</div>
