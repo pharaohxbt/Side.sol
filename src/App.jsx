@@ -799,6 +799,10 @@ export default function App() {
             </label>
           </Fld>
           <Fld l="Event name" req err={errs.title}><input className="field" placeholder="e.g. Solana Builders Meetup" value={f.title} onChange={e=>sF({...f,title:e.target.value})}/></Fld>
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 0"}}>
+            <div onClick={()=>sF({...f,isLuma:!f.isLuma,luma:f.isLuma?"":"https://luma.com/",lumaEventId:f.isLuma?"":f.lumaEventId})} className="tog" data-on={!!f.isLuma}><div className="tog-t" style={{transform:f.isLuma?"translateX(22px)":"translateX(0)"}}/></div>
+            <div><span style={{fontSize:13,fontWeight:600}}>Luma Event</span><p style={{fontSize:11,color:"var(--muted)",marginTop:1}}>Registration handled via Luma</p></div>
+          </div>
           <div className="r2">
             <Fld l="Category" req><select className="field" value={f.cat} onChange={e=>sF({...f,cat:e.target.value})}>{Object.keys(CATS).map(c=><option key={c}>{c}</option>)}</select></Fld>
             <Fld l="Hosted by" req err={errs.host}><input className="field" placeholder="Team / person" value={f.host} onChange={e=>sF({...f,host:e.target.value})}/></Fld>
@@ -809,10 +813,6 @@ export default function App() {
           </div>
           <Fld l="Location" req err={errs.loc}><input className="field" placeholder="Venue, address" value={f.loc} onChange={e=>sF({...f,loc:e.target.value})}/></Fld>
           <Fld l="Description"><textarea className="field" rows={3} placeholder="What's it about?" value={f.desc} onChange={e=>sF({...f,desc:e.target.value})}/></Fld>
-          <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0"}}>
-            <div onClick={()=>sF({...f,isLuma:!f.isLuma,luma:f.isLuma?"":"https://luma.com/",lumaEventId:f.isLuma?"":f.lumaEventId})} className="tog" data-on={!!f.isLuma}><div className="tog-t" style={{transform:f.isLuma?"translateX(22px)":"translateX(0)"}}/></div>
-            <div><span style={{fontSize:13,fontWeight:600}}>Luma Event</span><p style={{fontSize:11,color:"var(--muted)",marginTop:1}}>Registration handled via Luma</p></div>
-          </div>
           {f.isLuma ? <>
             <Fld l="Luma link" err={errs.luma}>
               <input className="field" placeholder="https://luma.com/your-event" value={f.luma} onChange={e => {
@@ -911,7 +911,7 @@ export default function App() {
               <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                 <span className="pill" style={{background:`${cfg(cat)}20`,color:cfg(cat),backdropFilter:"blur(6px)"}}>{cat.em} {ev.cat}</span>
                 {verified && <span className="pill verified-pill" style={{backdropFilter:"blur(6px)"}}>✓</span>}
-                {!verified && going && <span className="pill going-pill" style={{backdropFilter:"blur(6px)"}}>RSVP'd</span>}
+                {!verified && going && <span className="pill going-pill" style={{backdropFilter:"blur(6px)"}}>Going</span>}
               </div>
               <button className="ib-sm" onClick={e => { e.stopPropagation(); togBm(ev.id); }} style={{color:saved?"#F9AB00":"rgba(255,255,255,.8)",textShadow:"0 1px 4px rgba(0,0,0,.4)"}}>{saved ? "★" : "☆"}</button>
             </div>
@@ -923,7 +923,7 @@ export default function App() {
               <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
                 <span className="pill" style={{background:`${cfg(cat)}10`,color:cfg(cat),border:`1px solid ${cfg(cat)}18`}}>{cat.em} {ev.cat}</span>
                 {verified && <span className="pill verified-pill">✓ Verified</span>}
-                {!verified && going && <span className="pill going-pill">RSVP'd</span>}
+                {!verified && going && <span className="pill going-pill">Going</span>}
                 {hot && <span className="pill hot-pill">🔥 Hot</span>}
               </div>
               <button className="ib-sm" onClick={e => { e.stopPropagation(); togBm(ev.id); }} style={{color:saved?"#F9AB00":"var(--muted)"}}>{saved ? "★" : "☆"}</button>
@@ -1014,7 +1014,7 @@ export default function App() {
             <p style={{color:"var(--muted)",fontSize:13.5,animation:"fadeUp .4s .2s both"}}>by <strong style={{color:"var(--heading)",fontFamily:"var(--fd)"}}>{ev.host}</strong></p>
             <div style={{display:"flex",gap:5,marginTop:10,justifyContent:"center",flexWrap:"wrap",animation:"fadeUp .4s .25s both"}}>
               {verified && <span className="pill verified-pill" style={{animation:"pulseRing 1.5s ease .5s"}}>✓ Verified Attendance</span>}
-              {!verified && going && <span className="pill going-pill">RSVP'd — check in for XP</span>}
+              {!verified && going && <span className="pill going-pill">Going — check in for XP</span>}
               {ev.rsvp && !going && <span className="pill rsvp-pill">🔒 Approval Required</span>}
               {ev.rsvp && going && <span className="pill" style={{background:"rgba(20,241,149,.1)",color:"#0A8F5A",border:"1px solid rgba(20,241,149,.18)"}}>✓ Approved</span>}
             </div>
@@ -1228,7 +1228,7 @@ export default function App() {
             return (
               <div key={l.handle+i} className={`lb-row ${isMe ? "me" : ""}`}>
                 <span className="lb-rank">{i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`}</span>
-                <Avatar name={l.name} s={26} bg={uc(l.handle)}/>
+                <Avatar name={l.name} s={26} bg={uc(l.handle)} pfp={l.pfp}/>
                 <div style={{flex:1,minWidth:0}}><p className="lb-name">{l.name}{isMe ? " (you)" : ""}</p></div>
                 <div className="lb-xp"><span className="lb-lvl">{getLevel(l.xp).n}</span>{l.xp} XP</div>
               </div>
@@ -1527,10 +1527,12 @@ export default function App() {
                     <Avatar name={fr.name} s={38} bg={uc(fr.handle)} pfp={fr.pfp}/>
                     <div style={{flex:1}}>
                       <p style={{fontSize:14,fontWeight:700,fontFamily:"var(--fd)"}}>{fr.name}{fr.pending && <span style={{fontSize:9,marginLeft:6,color:"var(--muted)",background:"var(--surface2)",padding:"2px 7px",borderRadius:100,fontWeight:600,fontFamily:"var(--fm)"}}>pending</span>}</p>
-                      <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{fr.pending ? `${fr.handle} — will link when they join` : `${fr.role || fr.handle} · `}{!fr.pending && <span style={{color:"var(--accent)",fontWeight:600}}>{frE.length} events</span>}</p>
+                      <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{fr.pending ? `${fr.handle} — will link when they join` : `${fr.role || fr.handle} · `}{!fr.pending && <span style={{color:"var(--accent)",fontWeight:600}}>{frE.length} event{frE.length!==1?"s":""}</span>}</p>
                     </div>
-                    <button className="ib-sm" onClick={e => { e.stopPropagation(); togVip(fr.handle); }} style={{color:isVip?"#F9AB00":"var(--muted)",fontSize:14}} title="Must meet">{isVip ? "⭐" : "☆"}</button>
-                    <button className="ib-sm" onClick={e => { e.stopPropagation(); removeFriend(fr); }} style={{color:"var(--muted)"}}>✕</button>
+                    <div style={{display:"flex",gap:4}}>
+                      <button className="ib-sm" onClick={e => { e.stopPropagation(); togVip(fr.handle); }} style={{color:isVip?"#F9AB00":"var(--muted)",fontSize:14}} title="Must meet">{isVip ? "⭐" : "☆"}</button>
+                      <button className="ib-sm" onClick={e => { e.stopPropagation(); removeFriend(fr); }} style={{color:"var(--muted)",fontSize:12}}>✕</button>
+                    </div>
                   </div>
                 );
               })}
@@ -1588,27 +1590,27 @@ export default function App() {
             const isGoing = rsvps.includes(ev.id);
             return (
               <div key={ev.id} style={{marginBottom:14,animation:`cardIn .4s cubic-bezier(.16,1,.3,1) ${i*0.06}s both`}}>
-                <div className="ev-card" style={{background:cbg(cat),borderLeft:`4px solid ${cat.ac}`,marginBottom:6}} onClick={() => setSel(ev)}>
+                <div className="ev-card" style={{background:cbg(cat),borderLeft:`4px solid ${cat.ac}`}} onClick={() => setSel(ev)}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                     <div style={{flex:1}}>
                       <div style={{display:"flex",gap:5,marginBottom:3}}>
                         <span className="pill" style={{background:`${cfg(cat)}14`,color:cfg(cat),fontSize:10}}>{cat.em} {ev.cat}</span>
-                        {isGoing && <span className="pill going-pill" style={{fontSize:10}}>You're going</span>}
+                        {isGoing && <span className="pill going-pill" style={{fontSize:10}}>Going</span>}
                       </div>
                       <h4 className="card-t-sm">{ev.title}</h4>
                       <span className="card-m">{fd(ev.date)} · {ev.time}</span>
                     </div>
                     {!isGoing && user && <button className="qrsvp" onClick={e => { e.stopPropagation(); togRsvp(ev.id); }} style={{alignSelf:"center"}}>Join</button>}
                   </div>
-                </div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",paddingLeft:8}}>
-                  {evFr.map(fr => (
-                    <div key={fr.handle} className={`friend-chip ${vips.includes(fr.handle)?"vip":""}`} onClick={() => setFriendView(fr)} style={{fontSize:12}}>
-                      {vips.includes(fr.handle)&&<span style={{fontSize:9}}>⭐</span>}
-                      <Avatar name={fr.name} s={18} bg={uc(fr.handle)} pfp={fr.pfp}/>
-                      <span>{fr.name.split(" ")[0]}</span>
-                    </div>
-                  ))}
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>
+                    {evFr.map(fr => (
+                      <div key={fr.handle} className={`friend-chip ${vips.includes(fr.handle)?"vip":""}`} onClick={e => { e.stopPropagation(); setFriendView(fr); }} style={{fontSize:12}}>
+                        {vips.includes(fr.handle)&&<span style={{fontSize:9}}>⭐</span>}
+                        <Avatar name={fr.name} s={18} bg={uc(fr.handle)} pfp={fr.pfp}/>
+                        <span>{fr.name.split(" ")[0]}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             );
@@ -1620,7 +1622,7 @@ export default function App() {
             <div className="empty-msg">📍<br/><br/><strong>No friend activity yet</strong><br/>Your friends haven't RSVP'd to any events</div>
           ) : <>
             {myOverlap.length > 0 && <>
-              <p className="section-label">📍 You + friends · {myOverlap.length} events</p>
+              <p className="section-label">📍 You + friends · {myOverlap.length} event{myOverlap.length!==1?"s":""}</p>
               {myOverlap.map((ev, i) => renderOverlapCard(ev, i))}
             </>}
             {friendOnly.length > 0 && <>
@@ -1651,7 +1653,7 @@ export default function App() {
                       {u.notable && <span style={{fontSize:9,background:"linear-gradient(135deg,rgba(153,69,255,.1),rgba(20,241,149,.08))",color:"var(--accent)",padding:"2px 7px",borderRadius:100,fontWeight:700,border:"1px solid rgba(153,69,255,.12)"}}>Notable</span>}
                     </div>
                     <p style={{fontSize:12,color:"var(--muted)",marginTop:1}}>{u.role}</p>
-                    <p style={{fontSize:11,color:"var(--accent)",fontWeight:600,marginTop:2}}>{theirEvs.length} events at {cd?.short}</p>
+                    <p style={{fontSize:11,color:"var(--accent)",fontWeight:600,marginTop:2}}>{theirEvs.length} event{theirEvs.length!==1?"s":""} at {cd?.short}</p>
                   </div>
                   <div style={{display:"flex",gap:4}}>
                     {isFriend && <button className="ib-sm" onClick={e => { e.stopPropagation(); togVip(u.handle); }} style={{color:isVip?"#F9AB00":"var(--muted)",fontSize:14}} title="Must meet">{isVip ? "⭐" : "☆"}</button>}
@@ -2046,7 +2048,7 @@ export default function App() {
         {profTab === "verified" && (verEvs.length === 0 ? <div className="empty-msg"><div style={{fontSize:40,marginBottom:8}}>📍</div><strong style={{fontSize:17}}>No check-ins yet</strong><p style={{marginTop:6,marginBottom:16}}>RSVP to events, then check in at the venue to earn XP</p><button className="btn-sm" onClick={() => setView("home")} style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"10px 24px"}}>Browse events</button></div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{verEvs.map((ev,i) => renderCard(ev,i,true))}</div>)}
         {profTab === "mine" && (myEvs.length === 0 ? <div className="empty-msg">📝<br/><br/><strong>No submitted events</strong><br/>Tap + to submit your own side event</div> : <div style={{display:"flex",flexDirection:"column",gap:10}}>{myEvs.map((ev,i) => renderCard(ev,i,false))}</div>)}
 
-        <button className="btn-outline" onClick={async () => { saveState("user", null); setUser(null); if (hasSupabase()) await db.signOut(); toast("Signed out"); }} style={{width:"100%",marginTop:24}}>Sign out</button>
+        <button className="btn-outline" onClick={async () => { saveState("user", null); setUser(null); if (hasSupabase()) await db.signOut(); toast("Signed out"); }} style={{width:"100%",marginTop:24,marginBottom:24}}>Sign out</button>
       </div>
     );
   };
