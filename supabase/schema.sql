@@ -43,6 +43,7 @@ create table events (
   host text not null,
   "desc" text default '',
   rsvp boolean default false,
+  hide_loc boolean default false,
   luma text default '',
   conf text not null default 'acc26',
   att integer default 0,

@@ -722,7 +722,7 @@ export default function App() {
     const [f, sF] = useState(() => {
       if (initial) return { ...initial, isLuma: !!(initial.lumaEventId || initial.luma?.includes("luma")) };
       if (formDraftRef.current) return formDraftRef.current;
-      return { title:"", cat:"Meetup", date:"", time:"", loc:"", host:"", desc:"", rsvp:false, luma:"", conf, banner:"", capacity:0, announcement:"", bannerPos:50, isLuma:false, lumaEventId:"" };
+      return { title:"", cat:"Meetup", date:"", time:"", loc:"", host:"", desc:"", rsvp:false, hide_loc:false, luma:"", conf, banner:"", capacity:0, announcement:"", bannerPos:50, isLuma:false, lumaEventId:"" };
     });
     // Save draft on every change so it survives re-renders / tab switches
     useEffect(() => { if (!initial) formDraftRef.current = f; }, [f, initial]);
@@ -844,11 +844,15 @@ export default function App() {
           </>}
           <div className="r2">
             {!f.isLuma && <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div onClick={()=>sF({...f,rsvp:!f.rsvp})} className="tog" data-on={f.rsvp}><div className="tog-t" style={{transform:f.rsvp?"translateX(22px)":"translateX(0)"}}/></div>
+              <div onClick={()=>sF({...f,rsvp:!f.rsvp,hide_loc:!f.rsvp?f.hide_loc:false})} className="tog" data-on={f.rsvp}><div className="tog-t" style={{transform:f.rsvp?"translateX(22px)":"translateX(0)"}}/></div>
               <span style={{fontSize:13,fontWeight:600}}>Approval Required</span>
             </div>}
             <Fld l="Max capacity"><input className="field" type="number" min="0" placeholder="0 = unlimited" value={f.capacity||""} onChange={e=>sF({...f,capacity:parseInt(e.target.value)||0})}/></Fld>
           </div>
+          {!f.isLuma && f.rsvp && <div style={{display:"flex",alignItems:"center",gap:10,padding:"2px 0"}}>
+            <div onClick={()=>sF({...f,hide_loc:!f.hide_loc})} className="tog" data-on={f.hide_loc}><div className="tog-t" style={{transform:f.hide_loc?"translateX(22px)":"translateX(0)"}}/></div>
+            <div><span style={{fontSize:13,fontWeight:600}}>Hide Location Until Approved</span><p style={{fontSize:11,color:"var(--muted)",marginTop:1}}>Waitlisted and pending guests won't see the venue</p></div>
+          </div>}
           {isE && <Fld l="Announcement (visible to attendees)"><input className="field" placeholder="e.g. Venue changed! Now at..." value={f.announcement||""} onChange={e=>sF({...f,announcement:e.target.value})}/></Fld>}
           <button className="btn-glow" onClick={submit}>{isE ? "Save" : "Submit Event"}</button>
         </div>
@@ -935,7 +939,7 @@ export default function App() {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginTop:compact?4:2}}>
             <div className="card-mc">
               <span className="card-m">📅 {fd(ev.date)}{ev.time ? ` · ${ev.time}` : ""}</span>
-              <span className="card-m">📍 {ev.rsvp && !rsvps.includes(ev.id) ? "Approval required" : ev.loc}</span>
+              <span className="card-m">📍 {ev.rsvp && ev.hide_loc && !rsvps.includes(ev.id) ? "Visible after approval" : ev.loc}</span>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
               {vg.length > 0 && <span className="vip-badge">⭐ {vg[0].name}{vg.length > 1 ? ` +${vg.length-1}` : ""}</span>}
@@ -1023,7 +1027,7 @@ export default function App() {
               <div className="info-cell"><span className="info-l">Date</span><span className="info-v">{fd(ev.date)}</span></div>
               <div className="info-cell"><span className="info-l">Time</span><span className="info-v">{ev.time || "TBA"}</span></div>
             </div>
-            <div className="info-cell" style={{marginBottom:12,animation:"fadeUp .4s .35s both"}}><span className="info-l">Location</span><span className="info-v">{ev.rsvp && !going && !mine ? "🔒 Visible after approval" : ev.loc}</span></div>
+            <div className="info-cell" style={{marginBottom:12,animation:"fadeUp .4s .35s both"}}><span className="info-l">Location</span><span className="info-v">{ev.rsvp && ev.hide_loc && !going && !mine ? "🔒 Visible after approval" : ev.loc}</span></div>
             {ev.announcement && <div style={{padding:"10px 14px",background:"rgba(249,171,0,.08)",border:"1.5px solid rgba(249,171,0,.2)",borderRadius:14,marginBottom:12,textAlign:"left",animation:"fadeUp .4s .38s both",display:"flex",gap:8,alignItems:"flex-start"}}>
               <span style={{fontSize:14,flexShrink:0}}>📢</span>
               <div><p style={{fontSize:10,fontWeight:700,color:"#A66D00",textTransform:"uppercase",letterSpacing:".5px",marginBottom:2,fontFamily:"var(--fm)"}}>Announcement</p><p style={{fontSize:13,color:"var(--text)",lineHeight:1.5}}>{ev.announcement}</p></div>

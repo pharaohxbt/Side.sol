@@ -56,7 +56,7 @@ export async function createEvent(ev, userId) {
     title: ev.title, cat: ev.cat, date: ev.date, time: ev.time || "",
     loc: ev.loc, host: ev.host, desc: ev.desc || "", rsvp: ev.rsvp || false,
     luma: ev.luma || "", conf: ev.conf, banner: ev.banner || "",
-    capacity: ev.capacity || 0, announcement: ev.announcement || "",
+    capacity: ev.capacity || 0, announcement: ev.announcement || "", hide_loc: ev.hide_loc || false,
     created_by: userId,
   };
   if (ev.lumaEventId) row.lumaEventId = ev.lumaEventId;
@@ -73,7 +73,7 @@ export async function createEvent(ev, userId) {
 export async function updateEvent(id, updates) {
   if (!hasSupabase()) return null;
   const row = {};
-  const allowed = ["title","cat","date","time","loc","host","desc","rsvp","luma","conf","banner","capacity","announcement","lumaEventId","bannerPos"];
+  const allowed = ["title","cat","date","time","loc","host","desc","rsvp","hide_loc","luma","conf","banner","capacity","announcement","lumaEventId","bannerPos"];
   for (const k of allowed) { if (updates[k] !== undefined) row[k] = updates[k]; }
   const { data, error } = await supabase
     .from("events")

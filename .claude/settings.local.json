@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where npm:*)",
+      "Bash(command -v npm)",
+      "Bash(powershell.exe -Command \"Get-Command npm | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell.exe -Command \"\\(Get-Command node\\).Source\")",
+      "Bash(powershell.exe -Command \"where.exe npm; where.exe node\")",
+      "Bash(powershell.exe -Command \"[System.Environment]::GetEnvironmentVariable\\('PATH','Machine'\\) + ';' + [System.Environment]::GetEnvironmentVariable\\('PATH','User'\\)\")",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" run dev)",
+      "Bash(kill %1)",
+      "Bash(grep -E \"\\\\.\\(sql|ts|js\\)$\")",
+      "Bash(find /c/Users/jelfa/Documents/GitHub/Side.sol -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" \\\\\\) ! -path \"*/node_modules/*\" -exec grep -l \"approve_event_request\\\\|deny_event_request\\\\|rpc/\" {} \\\\;)"
+    ]
+  }
+}
