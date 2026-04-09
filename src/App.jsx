@@ -258,6 +258,7 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
   const [showSort, setShowSort] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const sortRef = useRef(null);
@@ -628,7 +629,11 @@ export default function App() {
     toast(wasHidden ? "Now visible to friends" : "Hidden from friends", "info");
   };
 
-  const delEv = async (id) => { setEvents(es => es.filter(e => e.id !== id)); setSel(null); if (hasSupabase()) await db.deleteEvent(id); toast("Event deleted"); };
+  const delEv = (id) => setConfirmDel(id);
+  const confirmDelEv = async () => {
+    const id = confirmDel; setConfirmDel(null);
+    setEvents(es => es.filter(e => e.id !== id)); setSel(null); if (hasSupabase()) await db.deleteEvent(id); toast("Event deleted");
+  };
 
   const shareEv = async (ev) => {
     const base = window.location.origin + window.location.pathname;
@@ -2585,6 +2590,20 @@ export default function App() {
               <button className="btn-glow" onClick={() => { setShowOnboarding(false); saveState("onboarded", true); }} style={{padding:"15px 44px",fontSize:16,width:"100%",maxWidth:320}}>{friends.length > 0 ? "Let's go!" : "Skip for now"}</button>
             </div>
           )}
+        </div>
+      </>)}
+      {confirmDel && (<>
+        <div className="overlay" onClick={() => setConfirmDel(null)}/>
+        <div className="modal" style={{maxHeight:"auto",padding:"28px 24px 32px"}} role="alertdialog" aria-modal="true" aria-labelledby="confirm-del-title">
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div style={{width:48,height:48,borderRadius:14,background:"rgba(191,54,12,.12)",border:"1.5px solid rgba(191,54,12,.2)",margin:"0 auto 14px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>🗑</div>
+            <h2 id="confirm-del-title" style={{fontSize:17,fontWeight:800,letterSpacing:"-.3px",marginBottom:6}}>Delete this event?</h2>
+            <p style={{color:"var(--muted)",fontSize:13,lineHeight:1.5}}>This can't be undone. All RSVPs and data will be lost.</p>
+          </div>
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn-outline" style={{flex:1}} onClick={() => setConfirmDel(null)}>Cancel</button>
+            <button className="btn-glow" style={{flex:1,background:"linear-gradient(135deg,#BF360C,#E64A19)",boxShadow:"0 4px 16px rgba(191,54,12,.3)"}} onClick={confirmDelEv}>Delete</button>
+          </div>
         </div>
       </>)}
       {showAuth && (<>
