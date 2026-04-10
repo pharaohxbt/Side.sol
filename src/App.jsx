@@ -233,6 +233,73 @@ function HostCodeDisplay({ ev, onClose, onCopy }) {
 }
 
 // ════════════════════════════════════════
+// REGISTRATION MODAL
+// ════════════════════════════════════════
+function RegModal({ ev, type, existingAnswers, onClose, onSubmit }) {
+  const questions = ev.registration_questions || [];
+  const [answers, setAnswers] = useState(existingAnswers || {});
+  const [errs, setErrs] = useState({});
+
+  const validate = () => {
+    const e = {};
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    for (const q of questions) {
+      const val = answers[q.id]?.toString().trim() || "";
+      if (q.required && !val) { e[q.id] = "This field is required"; continue; }
+      if (q.type === "email" && val && !emailRe.test(val)) e[q.id] = "Enter a valid email address";
+    }
+    setErrs(e);
+    return !Object.keys(e).length;
+  };
+
+  return (<>
+    <div className="overlay" onClick={onClose} style={{zIndex:200}}/>
+    <div className="modal" role="dialog" style={{zIndex:201}}>
+      <div className="mh">
+        <h2 className="mt">{type === "request" ? "🔒 Request to Join" : "Register"}</h2>
+        <button className="ib" aria-label="Close" onClick={onClose}>✕</button>
+      </div>
+      <p style={{fontSize:13.5,color:"var(--muted)",marginBottom:20,lineHeight:1.5}}>
+        <strong style={{color:"var(--heading)"}}>{ev.host}</strong> has a few questions before you {type === "request" ? "request access" : "join"}.
+      </p>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        {questions.map(q => (
+          <div key={q.id} style={{display:"flex",flexDirection:"column",gap:5}}>
+            <label style={{fontSize:11,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"1px",fontFamily:"var(--fm)"}}>
+              {q.label}{q.required && <span style={{color:"var(--accent)",marginLeft:2}}>*</span>}
+            </label>
+            {q.type === "text" && (
+              <input className="field" placeholder={q.placeholder || ""} value={answers[q.id] || ""} onChange={e => setAnswers(a => ({...a, [q.id]: e.target.value}))}/>
+            )}
+            {q.type === "email" && (
+              <input className="field" type="email" placeholder={q.placeholder || "you@example.com"} value={answers[q.id] || ""} onChange={e => setAnswers(a => ({...a, [q.id]: e.target.value}))}/>
+            )}
+            {q.type === "select" && (
+              <select className="field" value={answers[q.id] || ""} onChange={e => setAnswers(a => ({...a, [q.id]: e.target.value}))}>
+                <option value="">Choose one…</option>
+                {(q.options || []).filter(o => o.trim()).map((opt, i) => <option key={i} value={opt.trim()}>{opt.trim()}</option>)}
+              </select>
+            )}
+            {q.type === "checkbox" && (
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:"var(--bg)",borderRadius:12,border:"1.5px solid var(--border)",cursor:"pointer"}} onClick={() => setAnswers(a => ({...a, [q.id]: !a[q.id]}))}>
+                <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${answers[q.id]?"var(--accent)":"var(--border)"}`,background:answers[q.id]?"var(--accent)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s",flexShrink:0}}>
+                  {answers[q.id] && <span style={{color:"white",fontSize:13,fontWeight:800}}>✓</span>}
+                </div>
+                <span style={{fontSize:14}}>{q.placeholder || "Yes"}</span>
+              </div>
+            )}
+            {errs[q.id] && <span style={{fontSize:12,color:"#DC2626",fontWeight:600}}>⚠ {errs[q.id]}</span>}
+          </div>
+        ))}
+      </div>
+      <button className="btn-glow" style={{width:"100%",marginTop:20}} onClick={() => { if (validate()) onSubmit(answers); }}>
+        {type === "request" ? "🔒 Send Request" : "✓ Complete Registration"}
+      </button>
+    </div>
+  </>);
+}
+
+// ════════════════════════════════════════
 // MAIN APP
 // ════════════════════════════════════════
 export default function App() {
@@ -281,6 +348,8 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
   const [dark, setDark] = useState(false);
+  const [regAnswers, setRegAnswers] = useState({}); // {eventId: {qId: answer}}
+  const [showRegModal, setShowRegModal] = useState(null); // {ev, type:"join"|"request"}
   const { toasts, push: toast } = useToast();
 
   // ── Load data (Supabase → localStorage fallback) ──
@@ -297,7 +366,7 @@ export default function App() {
         if (stored?.access_token) token = stored.access_token;
       } catch(e) {}
 
-      const res = await fetch(`${supaUrl}/rest/v1/profiles?id=eq.${uid}&select=friends_data,vips_data,bmarks_data,rsvps_data,checkins_data,incog_data,pending_requests_data,approved_users_data,friend_requests_data`, {
+      const res = await fetch(`${supaUrl}/rest/v1/profiles?id=eq.${uid}&select=friends_data,vips_data,bmarks_data,rsvps_data,checkins_data,incog_data,pending_requests_data,approved_users_data,friend_requests_data,reg_answers_data`, {
         headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
       });
       if (!res.ok) return;
@@ -314,6 +383,7 @@ export default function App() {
       setPendingRequests(data.pending_requests_data || []);
       setApprovedUsers(data.approved_users_data || {});
       setFriendRequests(data.friend_requests_data || []);
+      if (data.reg_answers_data) setRegAnswers(data.reg_answers_data);
     } catch(e) {}
   }, []);
 
@@ -345,6 +415,7 @@ export default function App() {
       setIncog(loadState("incog", []));
       setPrivacy(loadState("privacy", { profilePublic: false }));
       setVips(loadState("vips", []));
+      setRegAnswers(loadState("regAnswers", {}));
     }
     setReady(true);
 
@@ -484,6 +555,7 @@ export default function App() {
   useEffect(() => { if (ready) saveState("approvedUsers", approvedUsers); }, [approvedUsers, ready]);
   useEffect(() => { if (ready) saveState("vips", vips); }, [vips, ready]);
   useEffect(() => { if (ready) saveState("privacy", privacy); }, [privacy, ready]);
+  useEffect(() => { if (ready) saveState("regAnswers", regAnswers); }, [regAnswers, ready]);
   useEffect(() => { if (ready) { saveState("dark", dark); const bg = dark ? "#0c0c14" : "#F5F3EE"; document.documentElement.style.background = bg; document.body.style.background = bg; } }, [dark, ready]);
 
   // ── Sync specific data to Supabase (called on explicit user actions only) ──
@@ -629,6 +701,47 @@ export default function App() {
     toast(wasHidden ? "Now visible to friends" : "Hidden from friends", "info");
   };
 
+  // ── Registration helpers ──
+  const doRequest = (id) => {
+    const np = [...pendingRequests, id];
+    setPendingRequests(np);
+    syncToSupabase({ pending_requests_data: np });
+    toast("Request sent! The host will review it.", "info");
+  };
+
+  const handleJoin = (ev) => {
+    if (!user) { setShowAuth(true); return; }
+    const qs = ev.registration_questions || [];
+    if (qs.length > 0 && !rsvps.includes(ev.id)) {
+      setShowRegModal({ ev, type: "join" });
+    } else {
+      togRsvp(ev.id);
+    }
+  };
+
+  const handleRequest = (ev) => {
+    if (!user) { setShowAuth(true); return; }
+    const qs = ev.registration_questions || [];
+    if (qs.length > 0 && !pendingRequests.includes(ev.id)) {
+      setShowRegModal({ ev, type: "request" });
+    } else {
+      doRequest(ev.id);
+    }
+  };
+
+  const handleRegSubmit = (answers) => {
+    const { ev, type } = showRegModal;
+    const newAnswers = { ...regAnswers, [ev.id]: answers };
+    setRegAnswers(newAnswers);
+    syncToSupabase({ reg_answers_data: newAnswers });
+    if (type === "join") {
+      togRsvp(ev.id);
+    } else {
+      doRequest(ev.id);
+    }
+    setShowRegModal(null);
+  };
+
   const delEv = (id) => setConfirmDel(id);
   const confirmDelEv = async () => {
     const id = confirmDel; setConfirmDel(null);
@@ -727,7 +840,7 @@ export default function App() {
     const [f, sF] = useState(() => {
       if (initial) return { ...initial, isLuma: !!(initial.lumaEventId || initial.luma?.includes("luma")) };
       if (formDraftRef.current) return formDraftRef.current;
-      return { title:"", cat:"Meetup", date:"", time:"", loc:"", host:"", desc:"", rsvp:false, hide_loc:false, luma:"", conf, banner:"", capacity:0, announcement:"", bannerPos:50, isLuma:false, lumaEventId:"" };
+      return { title:"", cat:"Meetup", date:"", time:"", loc:"", host:"", desc:"", rsvp:false, hide_loc:false, luma:"", conf, banner:"", capacity:0, announcement:"", bannerPos:50, isLuma:false, lumaEventId:"", registration_questions:[] };
     });
     // Save draft on every change so it survives re-renders / tab switches
     useEffect(() => { if (!initial) formDraftRef.current = f; }, [f, initial]);
@@ -859,6 +972,69 @@ export default function App() {
             <div><span style={{fontSize:13,fontWeight:600}}>Hide Location Until Approved</span><p style={{fontSize:11,color:"var(--muted)",marginTop:1}}>Waitlisted and pending guests won't see the venue</p></div>
           </div>}
           {isE && <Fld l="Announcement (visible to attendees)"><input className="field" placeholder="e.g. Venue changed! Now at..." value={f.announcement||""} onChange={e=>sF({...f,announcement:e.target.value})}/></Fld>}
+
+          {/* ── Registration Questions Builder ── */}
+          <div style={{borderTop:"1.5px dashed var(--border)",paddingTop:16,marginTop:4}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div>
+                <p style={{fontSize:13,fontWeight:700,color:"var(--heading)"}}>📋 Registration Questions</p>
+                <p style={{fontSize:11,color:"var(--muted)",marginTop:2}}>Ask attendees questions when they sign up</p>
+              </div>
+              <button className="btn-sm" style={{padding:"7px 14px",fontSize:11,flexShrink:0}} onClick={() => {
+                const newQ = {id:gid(),label:"",type:"text",placeholder:"",required:false,options:[]};
+                sF(prev => ({...prev,registration_questions:[...(prev.registration_questions||[]),newQ]}));
+              }}>+ Add</button>
+            </div>
+            {(f.registration_questions||[]).length === 0 && (
+              <p style={{fontSize:12,color:"var(--muted)",textAlign:"center",padding:"12px 0",fontStyle:"italic"}}>No questions yet — attendees can register without answering anything</p>
+            )}
+            {(f.registration_questions||[]).map((q,qi) => (
+              <div key={q.id} style={{background:"var(--bg)",borderRadius:14,padding:"14px 16px",border:"1px solid var(--border)",marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <span style={{fontSize:10,fontWeight:700,color:"var(--muted)",fontFamily:"var(--fm)",textTransform:"uppercase",letterSpacing:"1px"}}>Question {qi+1}</span>
+                  <button className="ib-sm" style={{color:"#BF360C",fontSize:13}} onClick={() => {
+                    sF(prev => ({...prev,registration_questions:(prev.registration_questions||[]).filter((_,i)=>i!==qi)}));
+                  }}>✕</button>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  <input className="field" style={{padding:"10px 14px",fontSize:13}} placeholder="Question text, e.g. What's your Solana wallet address?" value={q.label} onChange={e=>{
+                    const qs=[...(f.registration_questions||[])];qs[qi]={...qs[qi],label:e.target.value};sF(prev=>({...prev,registration_questions:qs}));
+                  }}/>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    <select className="field" style={{padding:"9px 12px",fontSize:12}} value={q.type} onChange={e=>{
+                      const qs=[...(f.registration_questions||[])];qs[qi]={...qs[qi],type:e.target.value};sF(prev=>({...prev,registration_questions:qs}));
+                    }}>
+                      <option value="text">📝 Text answer</option>
+                      <option value="email">📧 Email</option>
+                      <option value="select">📋 Dropdown</option>
+                      <option value="checkbox">☑️ Checkbox</option>
+                    </select>
+                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"0 4px"}}>
+                      <div onClick={()=>{const qs=[...(f.registration_questions||[])];qs[qi]={...qs[qi],required:!qs[qi].required};sF(prev=>({...prev,registration_questions:qs}));}} className="tog" data-on={q.required}><div className="tog-t" style={{transform:q.required?"translateX(22px)":"translateX(0)"}}/></div>
+                      <span style={{fontSize:12,fontWeight:600}}>Required</span>
+                    </div>
+                  </div>
+                  {q.type === "select" && (
+                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                      <p style={{fontSize:10,color:"var(--muted)",fontFamily:"var(--fm)",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px"}}>Options — one per line</p>
+                      <textarea className="field" rows={4} style={{padding:"8px 14px",fontSize:12,resize:"vertical"}} placeholder={"Option A\nOption B\nOption C"} value={(q.options||[]).join("\n")} onChange={e=>{
+                        const qs=[...(f.registration_questions||[])];qs[qi]={...qs[qi],options:e.target.value.split("\n")};sF(prev=>({...prev,registration_questions:qs}));
+                      }}/>
+                      {(q.options||[]).filter(o=>o.trim()).length > 0 && (
+                        <p style={{fontSize:10,color:"var(--accent)",fontFamily:"var(--fm)"}}>{q.options.filter(o=>o.trim()).length} option{q.options.filter(o=>o.trim()).length!==1?"s":""} added</p>
+                      )}
+                    </div>
+                  )}
+                  {q.type !== "select" && (
+                    <input className="field" style={{padding:"8px 14px",fontSize:12}} placeholder={q.type==="checkbox"?"Checkbox label (e.g. I agree to the terms)":"Placeholder hint (optional)"} value={q.placeholder||""} onChange={e=>{
+                      const qs=[...(f.registration_questions||[])];qs[qi]={...qs[qi],placeholder:e.target.value};sF(prev=>({...prev,registration_questions:qs}));
+                    }}/>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <button className="btn-glow" onClick={submit}>{isE ? "Save" : "Submit Event"}</button>
         </div>
       </div>
@@ -954,8 +1130,8 @@ export default function App() {
                   <span style={{fontSize:10.5,fontWeight:600,color:"var(--accent)"}}>{fg.length <= 2 ? fg.map(f=>f.name.split(" ")[0]).join(" & ") : `${fg.length} friends`}</span>
                 </div>
               )}
-              {user && !going && !ev.luma?.includes("luma") && !ev.rsvp && <button className="qrsvp" onClick={e => { e.stopPropagation(); togRsvp(ev.id); }}>Join</button>}
-              {user && !going && !ev.luma?.includes("luma") && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="qrsvp" onClick={e => { e.stopPropagation(); const np = [...pendingRequests, ev.id]; setPendingRequests(np); syncToSupabase({pending_requests_data:np}); toast("Request sent!", "info"); }}>Request</button>}
+              {user && !going && !ev.luma?.includes("luma") && !ev.rsvp && <button className="qrsvp" onClick={e => { e.stopPropagation(); handleJoin(ev); }}>Join</button>}
+              {user && !going && !ev.luma?.includes("luma") && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="qrsvp" onClick={e => { e.stopPropagation(); handleRequest(ev); }}>Request</button>}
               {user && !going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="qrsvp on" style={{fontSize:9,padding:"4px 10px"}} onClick={e => { e.stopPropagation(); }}>Requested</button>}
               {user && !going && ev.luma?.includes("luma") && (ev.lumaEventId ? <button className="luma-checkout--button qrsvp" type="button" data-luma-action="checkout" data-luma-event-id={ev.lumaEventId} onClick={e => { e.stopPropagation(); setTimeout(reloadLumaScript, 50); }} style={{fontSize:9,padding:"5px 12px"}}>Register</button> : <a href={ev.luma} target="_blank" rel="noopener noreferrer" className="qrsvp" onClick={e => { e.stopPropagation(); }} style={{textDecoration:"none",fontSize:9,padding:"5px 12px"}}>Register ↗</a>)}
               {user && going && !verified && <button className="qrsvp on" style={{fontSize:9,padding:"4px 10px"}} onClick={e => { e.stopPropagation(); }}>Going</button>}
@@ -1080,15 +1256,28 @@ export default function App() {
                   {allRsvp.map((u,i) => {
                     const isMe = user && u.handle === user.handle;
                     const isFr = friendHandles.includes(u.handle);
+                    const uAnswers = mine && ev.registration_questions?.length > 0 ? (u.reg_answers_data?.[ev.id] || {}) : null;
                     return (
-                      <div key={u.handle||i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<allRsvp.length-1?"1px solid var(--border)":"none",cursor:isMe?"default":"pointer",transition:"background .15s"}} onClick={() => { if (!isMe) { setSel(null); setFriendView({...u, method:"x"}); } }}>
-                        <Avatar name={u.name} s={28} bg={uc(u.handle||"")} pfp={u.pfp}/>
-                        <div style={{flex:1,minWidth:0}}>
-                          <p style={{fontSize:13,fontWeight:600,fontFamily:"var(--fd)"}}>{u.name}{isMe && <span style={{fontSize:10,color:"var(--muted)",marginLeft:4}}>(you)</span>}</p>
-                          <p style={{fontSize:10,color:"var(--muted)"}}>{u.role || u.handle}</p>
+                      <div key={u.handle||i} style={{borderBottom:i<allRsvp.length-1?"1px solid var(--border)":"none"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:isMe?"default":"pointer",transition:"background .15s"}} onClick={() => { if (!isMe) { setSel(null); setFriendView({...u, method:"x"}); } }}>
+                          <Avatar name={u.name} s={28} bg={uc(u.handle||"")} pfp={u.pfp}/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <p style={{fontSize:13,fontWeight:600,fontFamily:"var(--fd)"}}>{u.name}{isMe && <span style={{fontSize:10,color:"var(--muted)",marginLeft:4}}>(you)</span>}</p>
+                            <p style={{fontSize:10,color:"var(--muted)"}}>{u.role || u.handle}</p>
+                          </div>
+                          {!isMe && !isFr && <button className="btn-sm" style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"5px 12px",fontSize:10}} onClick={e => { e.stopPropagation(); addFriend(u.handle); }}>+ Add</button>}
+                          {isFr && <span style={{fontSize:10,color:"var(--accent)",fontWeight:600}}>👥 Friend</span>}
                         </div>
-                        {!isMe && !isFr && <button className="btn-sm" style={{background:"linear-gradient(135deg,#9945FF,#14F195)",border:"none",padding:"5px 12px",fontSize:10}} onClick={e => { e.stopPropagation(); addFriend(u.handle); }}>+ Add</button>}
-                        {isFr && <span style={{fontSize:10,color:"var(--accent)",fontWeight:600}}>👥 Friend</span>}
+                        {uAnswers && Object.keys(uAnswers).length > 0 && (
+                          <div style={{padding:"0 14px 10px 52px",display:"flex",flexDirection:"column",gap:2}}>
+                            {ev.registration_questions.map(q => uAnswers[q.id] !== undefined && (
+                              <div key={q.id} style={{fontSize:11,color:"var(--text)"}}>
+                                <span style={{color:"var(--muted)",fontFamily:"var(--fm)",fontWeight:600}}>{q.label}: </span>
+                                <span>{String(uAnswers[q.id])}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1102,12 +1291,26 @@ export default function App() {
             <div style={{marginTop:16,animation:"fadeUp .4s .52s both"}}>
               <p className="info-l" style={{marginBottom:8}}>Pending Requests · {eventPendingUsers.length}</p>
               <div style={{background:"var(--bg)",borderRadius:16,border:"1.5px solid rgba(249,171,0,.2)",overflow:"hidden"}}>
-                {eventPendingUsers.map((u,i) => (
-                  <div key={u.handle||i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<eventPendingUsers.length-1?"1px solid var(--border)":"none"}}>
+                {eventPendingUsers.map((u,i) => {
+                  const userAnswers = u.reg_answers_data?.[ev.id] || {};
+                  const hasAnswers = ev.registration_questions?.length > 0 && Object.keys(userAnswers).length > 0;
+                  return (
+                  <div key={u.handle||i} style={{borderBottom:i<eventPendingUsers.length-1?"1px solid var(--border)":"none"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px"}}>
                     <Avatar name={u.name} s={28} bg={uc(u.handle||"")} pfp={u.pfp}/>
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{fontSize:13,fontWeight:600,fontFamily:"var(--fd)"}}>{u.name}</p>
                       <p style={{fontSize:10,color:"var(--muted)"}}>{u.handle}</p>
+                      {hasAnswers && (
+                        <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
+                          {ev.registration_questions.map(q => userAnswers[q.id] !== undefined && (
+                            <div key={q.id} style={{fontSize:11,color:"var(--text)"}}>
+                              <span style={{color:"var(--muted)",fontFamily:"var(--fm)",fontWeight:600}}>{q.label}: </span>
+                              <span>{String(userAnswers[q.id])}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <button className="btn-sm" style={{background:"linear-gradient(135deg,#14F195,#0A8F5A)",padding:"5px 14px",fontSize:11}} onClick={() => {
                       const supaUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -1144,7 +1347,9 @@ export default function App() {
                       });
                     }}>✕</button>
                   </div>
-                ))}
+                  </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1157,8 +1362,8 @@ export default function App() {
               <div className="verified-banner" style={{animation:"pulseRing 1.5s ease"}}>✓ Attendance Verified — XP Earned</div>
             )}
             <div style={{display:"flex",gap:8}}>
-              {!going && !ev.luma?.includes("luma") && !ev.rsvp && <button className="btn-glow" style={{flex:1}} onClick={() => togRsvp(ev.id)}>Join</button>}
-              {!going && !ev.luma?.includes("luma") && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => { const np = [...pendingRequests, ev.id]; setPendingRequests(np); syncToSupabase({pending_requests_data:np}); toast("Request sent! The host will review it.", "info"); }}>🔒 Request</button>}
+              {!going && !ev.luma?.includes("luma") && !ev.rsvp && <button className="btn-glow" style={{flex:1}} onClick={() => handleJoin(ev)}>Join</button>}
+              {!going && !ev.luma?.includes("luma") && ev.rsvp && !pendingRequests.includes(ev.id) && <button className="btn-glow" style={{flex:1}} onClick={() => handleRequest(ev)}>🔒 Request</button>}
               {!going && !ev.luma?.includes("luma") && ev.rsvp && pendingRequests.includes(ev.id) && <button className="btn-outline" style={{flex:1,opacity:.6,cursor:"not-allowed",pointerEvents:"none"}}>Requested — Awaiting Approval</button>}
               {!going && ev.luma?.includes("luma") && <>
                 <button className="btn-glow" type="button" style={{flex:1,cursor:"pointer"}} onClick={() => {
@@ -1607,7 +1812,7 @@ export default function App() {
                       <h4 className="card-t-sm">{ev.title}</h4>
                       <span className="card-m">{fd(ev.date)} · {ev.time}</span>
                     </div>
-                    {!isGoing && user && <button className="qrsvp" onClick={e => { e.stopPropagation(); togRsvp(ev.id); }} style={{alignSelf:"center"}}>Join</button>}
+                    {!isGoing && user && <button className="qrsvp" onClick={e => { e.stopPropagation(); handleJoin(ev); }} style={{alignSelf:"center"}}>Join</button>}
                   </div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>
                     {evFr.map(fr => (
@@ -1798,7 +2003,7 @@ export default function App() {
           if (stored?.access_token) token = stored.access_token;
         } catch(e) {}
         const eid = sel.id;
-        const res = await fetch(`${supaUrl}/rest/v1/profiles?rsvps_data=cs.[${eid}]&select=name,handle,pfp,role`, {
+        const res = await fetch(`${supaUrl}/rest/v1/profiles?rsvps_data=cs.[${eid}]&select=name,handle,pfp,role,reg_answers_data`, {
           headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
         });
         if (res.ok) {
@@ -1806,7 +2011,7 @@ export default function App() {
           setEventAttendees(rows || []);
         }
         // Also fetch users who have pending requests for this event
-        const pendRes = await fetch(`${supaUrl}/rest/v1/profiles?pending_requests_data=cs.[${eid}]&select=name,handle,pfp,role`, {
+        const pendRes = await fetch(`${supaUrl}/rest/v1/profiles?pending_requests_data=cs.[${eid}]&select=name,handle,pfp,role,reg_answers_data`, {
           headers: { "apikey": supaKey, "Authorization": `Bearer ${token}` },
         });
         if (pendRes.ok) {
@@ -2402,6 +2607,7 @@ export default function App() {
         .modal{role:dialog;}
       `}</style>
       <Toasts toasts={toasts}/>
+      {showRegModal && <RegModal ev={showRegModal.ev} type={showRegModal.type} existingAnswers={regAnswers[showRegModal.ev.id]} onClose={() => setShowRegModal(null)} onSubmit={handleRegSubmit}/>}
       {questPop && <div className="quest-popup"><div style={{fontSize:44,marginBottom:8,animation:"wiggle .6s ease .2s both,float 2s ease-in-out .8s infinite"}}>{questPop.icon}</div><div style={{fontSize:18,fontWeight:800,letterSpacing:"-.2px",fontFamily:"var(--fd)",animation:"fadeUp .3s .15s both"}}>Quest Complete!</div><div style={{fontSize:14,fontWeight:600,opacity:.7,marginTop:3,animation:"fadeUp .3s .2s both"}}>{questPop.title}</div><div style={{fontSize:16,color:"#14F195",fontWeight:800,fontFamily:"var(--fm)",marginTop:10,background:"rgba(20,241,149,.12)",padding:"6px 18px",borderRadius:100,display:"inline-block",border:"1px solid rgba(20,241,149,.2)",animation:"scaleIn .4s .3s both"}}>+{questPop.xp} XP</div></div>}
 
       {/* HEADER */}

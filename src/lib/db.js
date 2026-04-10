@@ -61,6 +61,7 @@ export async function createEvent(ev, userId) {
   };
   if (ev.lumaEventId) row.lumaEventId = ev.lumaEventId;
   if (ev.bannerPos != null) row.bannerPos = ev.bannerPos;
+  if (ev.registration_questions) row.registration_questions = ev.registration_questions;
   const { data, error } = await supabase
     .from("events")
     .insert(row)
@@ -73,7 +74,7 @@ export async function createEvent(ev, userId) {
 export async function updateEvent(id, updates) {
   if (!hasSupabase()) return null;
   const row = {};
-  const allowed = ["title","cat","date","time","loc","host","desc","rsvp","hide_loc","luma","conf","banner","capacity","announcement","lumaEventId","bannerPos"];
+  const allowed = ["title","cat","date","time","loc","host","desc","rsvp","hide_loc","luma","conf","banner","capacity","announcement","lumaEventId","bannerPos","registration_questions"];
   for (const k of allowed) { if (updates[k] !== undefined) row[k] = updates[k]; }
   const { data, error } = await supabase
     .from("events")
