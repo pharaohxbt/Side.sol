@@ -1,0 +1,144 @@
+###############################################################
+# SIDE.SOL — Local Dev Stack
+#
+# Mirrors the Supabase cloud stack:
+#   db   → supabase/postgres (same image as prod, includes auth schema)
+#   rest → PostgREST          (Supabase REST API layer)
+#   auth → GoTrue             (Supabase auth service)
+#   api  → nginx              (gateway: routes /rest/v1 and /auth/v1)
+#   mail → MailHog            (catches outbound email locally)
+#
+# Setup:
+#   1. cp .env.docker .env.local                         (fill in secrets)
+#   2. docker compose --env-file .env.local up -d        (Docker Compose reads .env by
+#                                                          default; --env-file overrides)
+#   3. npm run dev                                        (Vite reads .env.local)
+#
+# Ports exposed to host:
+#   54321 → API gateway   (set VITE_SUPABASE_URL=http://localhost:54321)
+#   54322 → Postgres       (psql -h localhost -p 54322 -U postgres)
+#   8025  → MailHog UI     (view magic-link emails at http://localhost:8025)
+###############################################################
+
+name: sidesol
+
+services:
+
+  # ── DATABASE ────────────────────────────────────────────────────
+  # supabase/postgres ships with the auth schema, pgcrypto, and all
+  # Supabase roles (anon, authenticated, authenticator, service_role)
+  # pre-configured — identical to the managed Supabase Postgres image.
+  db:
+    image: supabase/postgres:15.6.1.143
+    restart: unless-stopped
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: 3600
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/99-sidesol.sql:ro
+    healthcheck:
+      # supabase/postgres uses supabase_admin as superuser (not postgres)
+      test: ["CMD-SHELL", "pg_isready -U supabase_admin -h localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── REST API  (PostgREST) ────────────────────────────────────────
+  rest:
+    image: postgrest/postgrest:v12.2.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Connect as supabase_admin (the actual superuser whose password IS
+      # POSTGRES_PASSWORD). The authenticator role exists but the image
+      # doesn't expose a way to set its password without a custom roles.sql.
+      # supabase_admin can SET ROLE to anon/authenticated for PostgREST.
+      PGRST_DB_URI: postgres://supabase_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_DB_POOL: 10
+    command: postgrest
+
+  # ── AUTH  (GoTrue) ───────────────────────────────────────────────
+  auth:
+    image: supabase/gotrue:v2.164.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://localhost:54321
+
+      GOTRUE_DB_DRIVER: postgres
+      # Same rationale as PostgREST — use supabase_admin (password = POSTGRES_PASSWORD)
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_admin:${POSTGRES_PASSWORD}@db:5432/postgres?search_path=auth
+
+      GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:5173}
+      GOTRUE_URI_ALLOW_LIST: "*"
+      GOTRUE_DISABLE_SIGNUP: "false"
+
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+
+      # ── Email / Magic Link ─────────────────────────────────────
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      # Auto-confirm emails in local dev (no clicking confirmation links)
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMTP_HOST: mail
+      GOTRUE_SMTP_PORT: 1025
+      GOTRUE_SMTP_ADMIN_EMAIL: noreply@sidesol.local
+      GOTRUE_SMTP_SENDER_NAME: "Side.sol Local"
+      GOTRUE_SMTP_USER: ""
+      GOTRUE_SMTP_PASS: ""
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY:     /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_INVITE:       /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+
+      # ── Twitter / X OAuth ─────────────────────────────────────
+      # Set these in .env.local to enable Twitter login locally
+      GOTRUE_EXTERNAL_TWITTER_ENABLED: ${TWITTER_ENABLED:-false}
+      GOTRUE_EXTERNAL_TWITTER_CLIENT_ID: ${TWITTER_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_TWITTER_SECRET: ${TWITTER_SECRET:-}
+      GOTRUE_EXTERNAL_TWITTER_REDIRECT_URI: http://localhost:54321/auth/v1/callback
+
+  # ── API GATEWAY  (nginx) ─────────────────────────────────────────
+  # Routes /rest/v1/* → PostgREST and /auth/v1/* → GoTrue, mirroring
+  # the role Kong plays in Supabase's managed infrastructure.
+  api:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - rest
+      - auth
+    ports:
+      - "54321:54321"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+
+  # ── MAIL  (MailHog) ──────────────────────────────────────────────
+  # Catches all outbound SMTP so magic-link emails don't go anywhere.
+  # View them at http://localhost:8025
+  mail:
+    image: mailhog/mailhog:v1.0.1
+    restart: unless-stopped
+    ports:
+      - "8025:8025"   # Web UI
+      # SMTP port 1025 is only accessible to other containers (not host)
+
+volumes:
+  db_data:
